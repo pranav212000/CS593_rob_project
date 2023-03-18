@@ -226,8 +226,10 @@ class PRM():
         # print(len(link_pos))
         
         # draw lines between link_pos
-        for i in range(len(link_pos)-1):
-            p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
+        # TODO uncomment following for to draw lines
+        # for i in range(len(link_pos)-1):
+        #     # draw_line_marker(link_pos[i], link_pos[i+1], [0, 0, 1])
+        #     p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
             
             
         
@@ -336,7 +338,7 @@ class PRM():
             # if i % 10 == 0:
             #     print("Iteration: ", i, flush=True)
 
-            if i % 50 == 0:
+            if i % 100 == 0:
                 if self.env == '2d':
 
                     filename = "graph_2d_k_{}_nodes_{}".format(k, i)
@@ -351,29 +353,24 @@ class PRM():
                         "graph_3d_k_{}_nodes_{}".format(k, i) + ".pkl")
                     
                     
+                    width = 640
+                    height = 480
+                    view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[0,0,0], distance=2, yaw=58, pitch=-42, roll=0, upAxisIndex=2)
+                    projection_matrix = p.computeProjectionMatrixFOV(fov=60, aspect=float(width)/height, nearVal=0.01, farVal=100)
+                    img_arr = p.getCameraImage(width=width, height=height, viewMatrix=view_matrix, projectionMatrix=projection_matrix, shadow=True, renderer=p.ER_BULLET_HARDWARE_OPENGL)
 
-                    # save image from pybullet
-# p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
-#                                      cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
+                    # create a PIL image object from the camera image array
+                    rgb_arr = np.array(img_arr[2])
+                    rgb_arr = rgb_arr[:, :, :3]  # remove alpha channel
+                    # rgb_img = Image.fromarray(rgb_arr)
 
+                    # # save the image to a file
+                    # rgb_img.save("pybullet_view.png")
                     
-                    # view_matrix = p.computeViewMatrixFromYawPitchRoll(
-                    #         cameraTargetPosition=[0, 0, 0],
-                    #         distance=1.400,
-                    #         yaw=58,
-                    #         pitch=-42.200,
-                    #         roll=0,
-                    #         upAxisIndex=2)
-                    # proj_matrix = p.computeProjectionMatrixFOV(
-                    #         fov=60, aspect=float(960) / 720,
-                    #         nearVal=0.1, farVal=100.0)
-                    # (_, _, px, _, _) = p.getCameraImage(
-                    #         width=1024, height=1024, viewMatrix=view_matrix,
-                    #         projectionMatrix=proj_matrix, renderer=p.ER_BULLET_HARDWARE_OPENGL)
-                    # rgb_array = np.array(px)
-                    # rgb_array = rgb_array[:, :, :3]
-                    # plt.imsave(
-                    #     'graph_3d_k_{}_nodes_{}.png'.format(k, i), rgb_array)
+
+
+                    plt.imsave(
+                        'graph_3d_k_{}_nodes_{}.png'.format(k, i), rgb_arr)
 
     def saveGraph(self, filename):
 
@@ -594,14 +591,16 @@ def main():
 
     if args.env == '3d':
         dof = 3
-        physicsClient = p.connect(p.GUI)
+        # TODO uncomment following necessary lines for 3D gui window (doesm't work in ssh)
+        physicsClient = p.connect(p.DIRECT)
+        # physicsClient = p.connect(p.GUI)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setPhysicsEngineParameter(enableFileCaching=0)
         p.setGravity(0, 0, -9.8)
-        p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
-        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, True)
-        p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
-                                     cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
+        # p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
+        # p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, True)
+        # p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
+        #                              cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
 
         # load objects
         plane = p.loadURDF("plane.urdf")
