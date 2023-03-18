@@ -13,7 +13,6 @@ from typing import List, Dict
 import pickle
 from tqdm import tqdm
 import pickle
-import resource
 import sys
 from types import NoneType
 import pybullet as p
@@ -25,6 +24,7 @@ import math
 import os
 import random
 import sys
+from visualizer import visualize
 from collision_utils import get_collision_fn
 
 
@@ -43,6 +43,13 @@ def draw_sphere_marker(position, radius, color):
         basePosition=position, baseCollisionShapeIndex=-1, baseVisualShapeIndex=vs_id)
     return marker_id
 
+def draw_line_marker(start, end, color):
+    # TODO check this function works or not
+    vs_id = p.createVisualShape(p.GEOM_LINE, lineWidth=5, lineColor=color)
+    marker_id = p.createMultiBody(
+        basePosition=start, baseCollisionShapeIndex=-1, baseVisualShapeIndex=vs_id)
+    p.changeVisualShape(marker_id, -1, lineToP2=end)
+    return marker_id
 
 def remove_marker(marker_id):
     p.removeBody(marker_id)
@@ -60,8 +67,17 @@ class Node():
     RRT Node
     """
 
-    def __init__(self, state):
+    def __init__(self, state=None, conf=None, ur5=None):
         self.state = state
+        self.conf = conf
+        if(conf is not None):
+            
+            num_joints = p.getNumJoints(ur5)
+            link_id = num_joints - 1
+            link_state = p.getLinkState(ur5, link_id, computeForwardKinematics=True)
+            link_pos = link_state[0]
+            self.state = link_pos
+
         self.cost = 0.0
         self.neighbors = {}
 
@@ -74,7 +90,7 @@ class PRM():
     Class for PRM
     """
 
-    def __init__(self, obstacleList, randArea, dof=2, expandDis=0.05, maxIter=100, env='2d', collisionCheck3d=None):
+    def __init__(self, obstacleList, randArea, dof=2, expandDis=0.05, maxIter=100, env='2d', collisionCheck3d=None, ur5=None, UR5_JOINT_INDICES=None):
         """
         obstacleList:obstacle Positions [[x,y,width,height],...]
         randArea:Ramdom Samping Area [min,max]
@@ -90,11 +106,17 @@ class PRM():
         self.maxRand = randArea[1]
         self.env = env
         self.collisionCheck3d = collisionCheck3d
+        self.ur5 = ur5
+        self.UR5_JOINT_INDICES = UR5_JOINT_INDICES
 
     def collisionCheck(self, node):
         """
         Check if the node is in collision.
         """
+
+        if (self.env == '3d'):
+            return self.collisionCheck3d(node.conf)
+
         s = np.zeros(self.dof, dtype=np.float32)
         s[0] = node.state[0]
         s[1] = node.state[1]
@@ -116,7 +138,6 @@ class PRM():
 
         return True  # safe'''
 
-
     def generateSample(self, iter=100):
         """
         Randomly generates a sample, to be used as a new node.
@@ -128,9 +149,9 @@ class PRM():
         returns: random c-space vector
         """
 
-        if(self.env == '2d'):
+        if (self.env == '2d'):
 
-            while(iter > 0):
+            while (iter > 0):
 
                 sample = []
                 for j in range(0, self.dof):
@@ -143,13 +164,14 @@ class PRM():
                     iter = iter - 1
 
         else:
-            rand_state = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
-            set_joint_positions(self.robot, UR5_JOINT_INDICES, rand_conf)
-            while(self.collisionCheck3d(rand_conf)):
-                rand_state = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
-    
-   
+            rand_state = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *
+                          math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+            set_joint_positions(self.ur5, UR5_JOINT_INDICES, rand_state)
+            while (self.collisionCheck3d(rand_state)):
+                rand_state = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *
+                              math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
 
+            return Node(conf=rand_state, ur5=self.ur5)
 
     def addNewNode(self, node: Node, newNode: Node, cost: float):
 
@@ -158,15 +180,59 @@ class PRM():
             newNode.add_neighbor(node, cost)
 
     def getDistance(self, node1: Node, node2: Node):
+        if (self.env == '3d'):
+            return np.linalg.norm(np.array(node1.conf) - np.array(node2.conf))
         return np.linalg.norm(np.array(node1.state) - np.array(node2.state))
 
     def getNearNodes(self, newNode: Node, radius: float, k: int) -> list[Node]:
         nearNodes = []
+
+
         for node in self.nodeList:
             if self.getDistance(newNode, node) < radius:
                 nearNodes.append(node)
         nearNodes.sort(key=lambda node: self.getDistance(newNode, node))
         return nearNodes[:k]
+    
+
+    def steerTo3d(self, rand_node, nearest_node, step_size=0.05):
+
+        distance = self.getDistance(rand_node, nearest_node)
+        n_steps = round(distance/step_size)
+        if n_steps == 0:
+            return self.collisionCheck3d(rand_node.conf)
+        unit_step = (np.array(rand_node.conf) - np.array(nearest_node.conf)) / n_steps
+        start = np.array(nearest_node.conf)
+        link_pos = []
+        start_pos = self.getEndEffectorPos()
+        for i in range(n_steps):
+            # print(i)
+            start = start + unit_step
+            start = (start[0], start[1], start[2])
+            link_pos.append(self.getEndEffectorPos())
+            
+            if self.collisionCheck3d(start):
+                # print('COLLIDED')
+                return (False, None)
+            
+        end_pos = self.getEndEffectorPos()
+
+        if len(link_pos) > 10:
+            link_pos = link_pos[::len(link_pos)//10]
+
+        link_pos.insert(0, start_pos)
+        link_pos.append(end_pos)
+
+        # print(len(link_pos))
+        
+        # draw lines between link_pos
+        for i in range(len(link_pos)-1):
+            p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
+            
+            
+        
+        return (True, distance)
+
 
     def steerTo(self, dest, source):
         """
@@ -221,41 +287,93 @@ class PRM():
             return (True, distTotal)
         else:
             return (False, None)
+        
 
-    def planning(self, n=1000, radius=10, k=30):
+    def getEndEffectorPos(self):
+        num_joints = p.getNumJoints(self.ur5)
+        link_id = num_joints - 1
+        link_state = p.getLinkState(self.ur5, link_id, computeForwardKinematics=True)
+        link_pos = link_state[0]
+        link_ori = link_state[1]
+        
+        return link_pos
+
+
+
+    def planning3d(self, n=1000, radius=10, k=30):
 
         for i in tqdm(range(n)):
             newNode = self.generateSample()
 
-            # TODO change for PRM*
-            # radius = 5.0
-
-            # gamma = 2 * (1 + 1/self.dof)**(1/self.dof)
-            gamma = 100
+            gamma = 500
             radius = gamma * ((math.log(i+1)/math.sqrt(i+1)) ** (1/self.dof))
+            # print(newNode)
+
+            # print(newNode.state)
+            link_pos = self.getEndEffectorPos()
+            # print(link_pos)
+            draw_sphere_marker(
+                        newNode.state, radius=0.01, color=[1, 0, 0, 1])
+                    
 
             nearNodes = self.getNearNodes(
                 newNode, radius=radius, k=len(self.nodeList))
 
             for node in nearNodes:
-                isCollisionFree, cost = self.steerTo(node, newNode)
+                
+                isCollisionFree, cost = self.steerTo3d(node, newNode)
 
                 if isCollisionFree:
                     if node not in newNode.neighbors.keys():
+                        # p.addUserDebugLine(newNode.state, node.state, [0, 0, 1], 1, 0)
                         newNode.neighbors[node] = cost
                         node.neighbors[newNode] = cost
+
+            # print("Neighbors: ", len(newNode.neighbors))
 
             self.nodeList.append(newNode)
 
             # if i % 10 == 0:
             #     print("Iteration: ", i, flush=True)
 
-            if i % 100 == 0:
-                filename = "graph_k_{}_nodes_{}".format(k, i)
-                self.drawGraph(newNode, save=True, epoch=i,
-                               filename=filename + ".png")
-                self.saveGraph("graph_k_{}_nodes_{}".format(k, i) + ".pkl")
-                print("Saved Graph: ", i)
+            if i % 50 == 0:
+                if self.env == '2d':
+
+                    filename = "graph_2d_k_{}_nodes_{}".format(k, i)
+                    self.drawGraph(newNode, save=True, epoch=i,
+                                   filename=filename + ".png")
+                    self.saveGraph(
+                        "graph_2d_k_{}_nodes_{}".format(k, i) + ".pkl")
+                    print("Saved Graph: ", i)
+                else:
+                    
+                    self.saveGraph(
+                        "graph_3d_k_{}_nodes_{}".format(k, i) + ".pkl")
+                    
+                    
+
+                    # save image from pybullet
+# p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
+#                                      cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
+
+                    
+                    # view_matrix = p.computeViewMatrixFromYawPitchRoll(
+                    #         cameraTargetPosition=[0, 0, 0],
+                    #         distance=1.400,
+                    #         yaw=58,
+                    #         pitch=-42.200,
+                    #         roll=0,
+                    #         upAxisIndex=2)
+                    # proj_matrix = p.computeProjectionMatrixFOV(
+                    #         fov=60, aspect=float(960) / 720,
+                    #         nearVal=0.1, farVal=100.0)
+                    # (_, _, px, _, _) = p.getCameraImage(
+                    #         width=1024, height=1024, viewMatrix=view_matrix,
+                    #         projectionMatrix=proj_matrix, renderer=p.ER_BULLET_HARDWARE_OPENGL)
+                    # rgb_array = np.array(px)
+                    # rgb_array = rgb_array[:, :, :3]
+                    # plt.imsave(
+                    #     'graph_3d_k_{}_nodes_{}.png'.format(k, i), rgb_array)
 
     def saveGraph(self, filename):
 
@@ -422,15 +540,15 @@ class PRM():
 
 def main():
 
-    print(resource.getrlimit(resource.RLIMIT_STACK))
-    print(sys.getrecursionlimit())
+    # print(resource.getrlimit(resource.RLIMIT_STACK))
+    # print(sys.getrecursionlimit())
 
     max_rec = 0x100000
 
     # May segfault without this line. 0x100 is a guess at the size of each stack frame.
-    resource.setrlimit(resource.RLIMIT_STACK, [
-                       0x100 * max_rec, resource.RLIM_INFINITY])
-    sys.setrecursionlimit(max_rec)
+    # resource.setrlimit(resource.RLIMIT_STACK, [
+    #    0x100 * max_rec, resource.RLIM_INFINITY])
+    # sys.setrecursionlimit(max_rec)
 
     parser = argparse.ArgumentParser(description='CS 593-ROB - Assignment 1')
     parser.add_argument('-g', '--geom', default='point', choices=['point', 'circle', 'rectangle'],
@@ -474,41 +592,43 @@ def main():
 
     dof = 2
 
-    if args.geom == 'rectangle':
-        dof = 3
-
     if args.env == '3d':
+        dof = 3
         physicsClient = p.connect(p.GUI)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setPhysicsEngineParameter(enableFileCaching=0)
         p.setGravity(0, 0, -9.8)
         p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
         p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, True)
-        p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000, cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
+        p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
+                                     cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
 
         # load objects
         plane = p.loadURDF("plane.urdf")
-        ur5 = p.loadURDF('assets/ur5/ur5.urdf', basePosition=[0, 0, 0.02], useFixedBase=True)
+        ur5 = p.loadURDF('assets/ur5/ur5.urdf',
+                         basePosition=[0, 0, 0.02], useFixedBase=True)
         obstacle1 = p.loadURDF('assets/block.urdf',
-                            basePosition=[1/4, 0, 1/2],
-                            useFixedBase=True)
+                               basePosition=[1/4, 0, 1/2],
+                               useFixedBase=True)
         obstacle2 = p.loadURDF('assets/block.urdf',
-                            basePosition=[2/4, 0, 2/3],
-                            useFixedBase=True)
-        
+                               basePosition=[2/4, 0, 2/3],
+                               useFixedBase=True)
+
         obstacles = [plane, obstacle1, obstacle2]
 
+        collisionCheck3d = get_collision_fn(ur5, UR5_JOINT_INDICES, obstacles=obstacles,
+                                            attachments=[], self_collisions=True,
+                                            disabled_collisions=set())
 
-        collisionChecker3d = get_collision_fn(ur5, UR5_JOINT_INDICES, obstacles=obstacles,
-                                       attachments=[], self_collisions=True,
-                                       disabled_collisions=set())
-
-        prm = PRM(obstacleList=obstacles, randArea=[-20, 20], dof=dof, env='3d', collisionChecker=collisionChecker3d)
+        prm = PRM(obstacleList=obstacles, randArea=[-20, 20], dof=dof, env='3d',
+                  collisionCheck3d=collisionCheck3d, ur5=ur5, UR5_JOINT_INDICES=UR5_JOINT_INDICES)
+        prm.planning3d(4000, radius=10, k=10)
 
     else:
         prm = PRM(obstacleList=obstacleList, randArea=[-20, 20], dof=dof)
-    
-    prm.planning(4000, radius=10, k=10)
+
+        prm.planning(4000, radius=10, k=10)
+
     endtime = time.time()
 
     # if path is None:
