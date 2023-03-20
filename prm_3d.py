@@ -90,7 +90,7 @@ class PRM():
     Class for PRM
     """
 
-    def __init__(self, obstacleList, randArea, dof=2, expandDis=0.05, maxIter=100, env='2d', collisionCheck3d=None, ur5=None, UR5_JOINT_INDICES=None):
+    def __init__(self, obstacleList, randArea, dof=2, expandDis=0.05, maxIter=100, env='2d', collisionCheck3d=None, ur5=None, UR5_JOINT_INDICES=None, env_id=0):
         """
         obstacleList:obstacle Positions [[x,y,width,height],...]
         randArea:Ramdom Samping Area [min,max]
@@ -108,6 +108,7 @@ class PRM():
         self.collisionCheck3d = collisionCheck3d
         self.ur5 = ur5
         self.UR5_JOINT_INDICES = UR5_JOINT_INDICES
+        self.env_id = env_id
 
     def collisionCheck(self, node):
         """
@@ -187,21 +188,20 @@ class PRM():
     def getNearNodes(self, newNode: Node, radius: float, k: int) -> list[Node]:
         nearNodes = []
 
-
         for node in self.nodeList:
             if self.getDistance(newNode, node) < radius:
                 nearNodes.append(node)
         nearNodes.sort(key=lambda node: self.getDistance(newNode, node))
         return nearNodes[:k]
-    
 
-    def steerTo3d(self, rand_node, nearest_node, step_size=0.05):
+    def steerTo3d(self, rand_node, nearest_node, step_size=0.05, show_animation=False):
 
         distance = self.getDistance(rand_node, nearest_node)
         n_steps = round(distance/step_size)
         if n_steps == 0:
             return self.collisionCheck3d(rand_node.conf)
-        unit_step = (np.array(rand_node.conf) - np.array(nearest_node.conf)) / n_steps
+        unit_step = (np.array(rand_node.conf) -
+                     np.array(nearest_node.conf)) / n_steps
         start = np.array(nearest_node.conf)
         link_pos = []
         start_pos = self.getEndEffectorPos()
@@ -210,31 +210,27 @@ class PRM():
             start = start + unit_step
             start = (start[0], start[1], start[2])
             link_pos.append(self.getEndEffectorPos())
-            
+
             if self.collisionCheck3d(start):
                 # print('COLLIDED')
                 return (False, None)
-            
+
         end_pos = self.getEndEffectorPos()
 
-        if len(link_pos) > 10:
-            link_pos = link_pos[::len(link_pos)//10]
+        if show_animation:
+            if len(link_pos) > 10:
+                link_pos = link_pos[::len(link_pos)//10]
 
-        link_pos.insert(0, start_pos)
-        link_pos.append(end_pos)
+            link_pos.insert(0, start_pos)
+            link_pos.append(end_pos)
 
-        # print(len(link_pos))
-        
-        # draw lines between link_pos
-        # TODO uncomment following for to draw lines
-        # for i in range(len(link_pos)-1):
-        #     # draw_line_marker(link_pos[i], link_pos[i+1], [0, 0, 1])
-        #     p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
-            
-            
-        
+            # print(len(link_pos))
+
+            # draw lines between link_pos
+            for i in range(len(link_pos)-1):
+                p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
+
         return (True, distance)
-
 
     def steerTo(self, dest, source):
         """
@@ -289,20 +285,18 @@ class PRM():
             return (True, distTotal)
         else:
             return (False, None)
-        
 
     def getEndEffectorPos(self):
         num_joints = p.getNumJoints(self.ur5)
         link_id = num_joints - 1
-        link_state = p.getLinkState(self.ur5, link_id, computeForwardKinematics=True)
+        link_state = p.getLinkState(
+            self.ur5, link_id, computeForwardKinematics=True)
         link_pos = link_state[0]
         link_ori = link_state[1]
-        
+
         return link_pos
 
-
-
-    def planning3d(self, n=1000, radius=10, k=30):
+    def planning3d(self, n=1000, radius=10, k=30, show_animation=False, save_every=20):
 
         for i in tqdm(range(n)):
             newNode = self.generateSample()
@@ -316,14 +310,14 @@ class PRM():
             # print(link_pos)
             draw_sphere_marker(
                         newNode.state, radius=0.01, color=[1, 0, 0, 1])
-                    
 
             nearNodes = self.getNearNodes(
                 newNode, radius=radius, k=len(self.nodeList))
 
             for node in nearNodes:
-                
-                isCollisionFree, cost = self.steerTo3d(node, newNode)
+
+                isCollisionFree, cost = self.steerTo3d(
+                    node, newNode, show_animation=show_animation)
 
                 if isCollisionFree:
                     if node not in newNode.neighbors.keys():
@@ -338,26 +332,35 @@ class PRM():
             # if i % 10 == 0:
             #     print("Iteration: ", i, flush=True)
 
-            if i % 100 == 0:
+            if i % save_every == 0:
                 if self.env == '2d':
 
-                    filename = "graph_2d_k_{}_nodes_{}".format(k, i)
+                    if not os.path.exists("2d"):
+                        os.mkdir("2d")
+
+                    filename = "2d/graph_2d_env_{}_nodes_{}".format(
+                        self.env_id, i)
                     self.drawGraph(newNode, save=True, epoch=i,
                                    filename=filename + ".png")
-                    self.saveGraph(
-                        "graph_2d_k_{}_nodes_{}".format(k, i) + ".pkl")
+                    self.saveGraph(filename + ".pkl")
+
                     print("Saved Graph: ", i)
                 else:
-                    
-                    self.saveGraph(
-                        "graph_3d_k_{}_nodes_{}".format(k, i) + ".pkl")
-                    
-                    
+                    if not os.path.exists("3d"):
+                        os.mkdir("3d")
+
+                    filename = "3d/graph_3d_env_{}_nodes_{}".format(
+                        self.env_id, i)
+                    self.saveGraph(filename + ".pkl")
+
                     width = 640
                     height = 480
-                    view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[0,0,0], distance=2, yaw=58, pitch=-42, roll=0, upAxisIndex=2)
-                    projection_matrix = p.computeProjectionMatrixFOV(fov=60, aspect=float(width)/height, nearVal=0.01, farVal=100)
-                    img_arr = p.getCameraImage(width=width, height=height, viewMatrix=view_matrix, projectionMatrix=projection_matrix, shadow=True, renderer=p.ER_BULLET_HARDWARE_OPENGL)
+                    view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[
+                                                                      0, 0, 0], distance=2, yaw=58, pitch=-42, roll=0, upAxisIndex=2)
+                    projection_matrix = p.computeProjectionMatrixFOV(
+                        fov=60, aspect=float(width)/height, nearVal=0.01, farVal=100)
+                    img_arr = p.getCameraImage(width=width, height=height, viewMatrix=view_matrix,
+                                               projectionMatrix=projection_matrix, shadow=True, renderer=p.ER_BULLET_HARDWARE_OPENGL)
 
                     # create a PIL image object from the camera image array
                     rgb_arr = np.array(img_arr[2])
@@ -366,11 +369,52 @@ class PRM():
 
                     # # save the image to a file
                     # rgb_img.save("pybullet_view.png")
-                    
+
+                    plt.imsave(filename + ".png", rgb_arr)
 
 
-                    plt.imsave(
-                        'graph_3d_k_{}_nodes_{}.png'.format(k, i), rgb_arr)
+
+
+
+    def planning(self, n=1000, radius=10, k=30, show_animation=False, save_every=20):
+
+        for i in tqdm(range(n)):
+            newNode=self.generateSample()
+
+            # TODO change for PRM*
+            # radius = 5.0
+
+            # gamma = 2 * (1 + 1/self.dof)**(1/self.dof)
+            gamma=100
+            radius=gamma * ((math.log(i+1)/math.sqrt(i+1)) ** (1/self.dof))
+
+            nearNodes=self.getNearNodes(
+                newNode, radius=radius, k=len(self.nodeList))
+
+            for node in nearNodes:
+                isCollisionFree, cost=self.steerTo(node, newNode)
+
+
+                if isCollisionFree:
+                    if node not in newNode.neighbors.keys():
+                        newNode.neighbors[node]=cost
+                        node.neighbors[newNode]=cost
+
+
+            self.nodeList.append(newNode)
+
+            # if i % 10 == 0:
+            #     print("Iteration: ", i, flush=True)
+
+            if i % save_every == 0:
+                if not os.path.exists("2d"):
+                    os.mkdir("2d")
+                filename="2d/graph_env_{}_nodes_{}".format(self.env_id, i)
+                self.drawGraph(newNode, save=True, epoch=i,
+                               filename=filename + ".png", show_animation=show_animation)
+                self.saveGraph(filename + ".pkl")
+                print("Saved Graph: ", i)
+
 
     def saveGraph(self, filename):
 
@@ -378,42 +422,42 @@ class PRM():
             pickle.dump(self.nodeList, f)
 
     def getAdjecencyMatrix(self):
-        adj = np.zeros((len(self.nodeList), len(self.nodeList)))
+        adj=np.zeros((len(self.nodeList), len(self.nodeList)))
         for i in range(len(self.nodeList)):
             for j in range(len(self.nodeList)):
                 if self.nodeList[i] in self.nodeList[j].neighbors.keys():
-                    adj[i][j] = self.nodeList[j].neighbors[self.nodeList[i]]
+                    adj[i][j]=self.nodeList[j].neighbors[self.nodeList[i]]
         return adj
 
     def getShortestPath(self, start, goal):
-        originalStart = copy.copy(start)
-        originalGoal = copy.copy(goal)
+        originalStart=copy.copy(start)
+        originalGoal=copy.copy(goal)
 
-        nearNodesToStart = self.getNearNodes(start, radius=50, k=5)
-        nearNodesToGoal = self.getNearNodes(goal, radius=50, k=5)
+        nearNodesToStart=self.getNearNodes(start, radius=50, k=5)
+        nearNodesToGoal=self.getNearNodes(goal, radius=50, k=5)
 
-        finalPath = None
-        minCost = float('inf')
+        finalPath=None
+        minCost=float('inf')
 
         for start in nearNodesToStart:
-            isCollisionFreeStart, startCost = self.steerTo(
+            isCollisionFreeStart, startCost=self.steerTo(
                 start, originalStart)
             # print(start.state, originalStart.state)
             # print(startCost)
             if isCollisionFreeStart:
                 # print("Found collision free start")
                 for goal in nearNodesToGoal:
-                    isCollisionFreeGoal, goalCost = self.steerTo(
+                    isCollisionFreeGoal, goalCost=self.steerTo(
                         goal, originalGoal)
                     if isCollisionFreeGoal:
                         # print("Found collision free goal")
-                        path, cost = self.dijkstra(start, goal)
+                        path, cost=self.dijkstra(start, goal)
                         if cost + startCost + goalCost < minCost:
-                            minCost = cost + startCost + goalCost
+                            minCost=cost + startCost + goalCost
                             # append start and goal to path
                             path.insert(0, originalStart)
                             path.append(originalGoal)
-                            finalPath = path
+                            finalPath=path
                             # print("Found path with cost: ", minCost)
 
         return finalPath, minCost
@@ -433,37 +477,37 @@ class PRM():
         # print(start, flush=True)
         # print(goal)
 
-        sptSet = set()
-        dist = {}
-        prev = {}
+        sptSet=set()
+        dist={}
+        prev={}
 
         for node in self.nodeList:
-            dist[node] = float('inf')
-            prev[node] = None
+            dist[node]=float('inf')
+            prev[node]=None
 
-        dist[start] = 0
+        dist[start]=0
 
         while len(sptSet) != len(self.nodeList):
-            u = min(dist, key=lambda node: dist[node]
+            u=min(dist, key=lambda node: dist[node]
                     if node not in sptSet else float('inf'))
             sptSet.add(u)
 
             for v in u.neighbors:
                 if v not in sptSet:
-                    alt = dist[u] + u.neighbors[v]
+                    alt=dist[u] + u.neighbors[v]
                     if alt < dist[v]:
-                        dist[v] = alt
-                        prev[v] = u
+                        dist[v]=alt
+                        prev[v]=u
 
         # reconstruct the shortest path
-        path = []
-        curr = goal
+        path=[]
+        curr=goal
 
         while curr is not None:
             path.append(curr)
-            curr = prev[curr]
+            curr=prev[curr]
 
-        pathcost = 0
+        pathcost=0
         for i in range(len(path)-1):
             pathcost += path[i].neighbors[path[i+1]]
 
@@ -473,9 +517,9 @@ class PRM():
 
     def loadGraph(self, filename):
         with open(filename, 'rb') as f:
-            self.nodeList = pickle.load(f)
+            self.nodeList=pickle.load(f)
 
-    def drawGraph(self, rnd=None, path=None,  save=False, epoch=0, filename=None):
+    def drawGraph(self, rnd=None, path=None,  save=False, epoch=0, filename=None, show_animation=True):
         """
         Draws the state space, with the tree, obstacles, and shortest path (if found). Useful for visualization.
 
@@ -488,27 +532,28 @@ class PRM():
             lambda event: [exit(0) if event.key == 'escape' else None])
 
         for (ox, oy, sizex, sizey) in self.obstacleList:
-            rect = mpatches.Rectangle(
+            rect=mpatches.Rectangle(
                 (ox, oy), sizex, sizey, fill=True, color="purple", linewidth=0.01)
             plt.gca().add_patch(rect)
 
-        visited = []
-        i = 0
+        visited=[]
+        i=0
         for node in self.nodeList:
             visited.append(node)
 
             plt.scatter(node.state[0], node.state[1], color='b', zorder=1, s=3)
 
             # if epoch > 400 == 0:
-            continue
+            if not show_animation:
+                continue
 
             for node2 in node.neighbors:
                 if node2 not in visited:
                     i += 1
                     plt.plot([node.state[0], node2.state[0]], [
                              node.state[1], node2.state[1]], color='r', zorder=0, linewidth=0.3)
-                    if i % 100 == 0:
-                        print('Still Plotting, done {}'. format(i))
+                    # if i % 200 == 0:
+                    #     print('Still Plotting, done {}'. format(i))
 
         if path is not None:
             for i, node in enumerate(path):
@@ -540,14 +585,14 @@ def main():
     # print(resource.getrlimit(resource.RLIMIT_STACK))
     # print(sys.getrecursionlimit())
 
-    max_rec = 0x100000
+    max_rec=0x100000
 
     # May segfault without this line. 0x100 is a guess at the size of each stack frame.
     # resource.setrlimit(resource.RLIMIT_STACK, [
     #    0x100 * max_rec, resource.RLIM_INFINITY])
     # sys.setrecursionlimit(max_rec)
 
-    parser = argparse.ArgumentParser(description='CS 593-ROB - Assignment 1')
+    parser=argparse.ArgumentParser(description='CS 593-ROB - Assignment 1')
     parser.add_argument('-g', '--geom', default='point', choices=['point', 'circle', 'rectangle'],
                         help='the geometry of the robot. Choose from "point" (Question 1), "circle" (Question 2), or "rectangle" (Question 3). default: "point"')
     parser.add_argument('--alg', default='rrt', choices=['rrt', 'rrtstar'],
@@ -560,22 +605,29 @@ def main():
                         help='set to disable live animation. (the final results will still be shown in a nodeList). Useful for doing timing analysis')
     parser.add_argument('--env', default='2d', choices=['2d', '3d'],
                         help='the environment to run in. Choose from "2d" or "3d". default: "2d"')
+    parser.add_argument('--env-id', default=0, type=int,
+                        choices=[0, 1, 2, 3, 4, 5])
+    parser.add_argument('--show-animation', action='store_true',
+                        help='set to show edges in the graph. Useful for debugging')
+    parser.add_argument('--save-every', default=20, type=int,
+                        help='set to save the graph every n iterations. Useful for debugging')
 
-    args = parser.parse_args()
+    args=parser.parse_args()
 
-    show_animation = not args.blind and not args.fast
+    show_animation=not args.blind and not args.fast
 
     print("Starting planning algorithm '%s' with '%s' robot geometry" %
           (args.alg, args.geom))
-    starttime = time.time()
+    starttime=time.time()
 
-    obstacleList = [
+    obstacleList=[
         (-15, 0, 15.0, 5.0),
         (15, -10, 5.0, 10.0),
         (-10, 8, 5.0, 15.0),
         (3, 15, 10.0, 5.0),
         (-10, -10, 10.0, 5.0),
         (5, -5, 5.0, 5.0),
+        (10, 10, 5.0, 5.0),
     ]
 
 # left bottom, right top
@@ -584,51 +636,72 @@ def main():
     # obstacleList = [
     # (-5,0, 15.0, 5.0)
     # ]
-    start = [-10, -17]
-    goal = [10, 10]
+    start=[-10, -17]
+    goal=[10, 10]
 
-    dof = 2
+    dof=2
 
     if args.env == '3d':
-        dof = 3
-        # TODO uncomment following necessary lines for 3D gui window (doesm't work in ssh)
-        physicsClient = p.connect(p.DIRECT)
-        # physicsClient = p.connect(p.GUI)
+        dof=3
+        physicsClient=p.connect(p.GUI)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setPhysicsEngineParameter(enableFileCaching=0)
         p.setGravity(0, 0, -9.8)
-        # p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
-        # p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, True)
-        # p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
-        #                              cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
+        p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
+        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, True)
+        p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
+                                     cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
 
         # load objects
-        plane = p.loadURDF("plane.urdf")
-        ur5 = p.loadURDF('assets/ur5/ur5.urdf',
+        plane=p.loadURDF("plane.urdf")
+        ur5=p.loadURDF('assets/ur5/ur5.urdf',
                          basePosition=[0, 0, 0.02], useFixedBase=True)
-        obstacle1 = p.loadURDF('assets/block.urdf',
+        obstacle1=p.loadURDF('assets/block.urdf',
                                basePosition=[1/4, 0, 1/2],
                                useFixedBase=True)
-        obstacle2 = p.loadURDF('assets/block.urdf',
+        obstacle2=p.loadURDF('assets/block.urdf',
                                basePosition=[2/4, 0, 2/3],
                                useFixedBase=True)
+        obstacle3=p.loadURDF('assets/block.urdf',
+                                 basePosition=[-3/4, 0, 1/2],
+                                    useFixedBase=True)
+        obstacle4=p.loadURDF('assets/block.urdf',
+                                    basePosition=[0, 3/5, 1/3],
+                                    useFixedBase=True)
+        obstacle5=p.loadURDF('assets/block.urdf',
+                                    basePosition=[0, -1/8, 2/3],
+                                    useFixedBase=True)
+        obstacle6=p.loadURDF('assets/block.urdf',
+                                 basePosition=[-1/4, 1/3, 3/5],
+                                    useFixedBase=True)
+        obstacle7=p.loadURDF('assets/block.urdf',
+                               basePosition=[2/4, -1/4, 2/3],
+                               useFixedBase=True)
 
-        obstacles = [plane, obstacle1, obstacle2]
+        env1=[plane, obstacle1, obstacle2, obstacle3, obstacle4,
+            obstacle5, obstacle6, obstacle7, obstacle6]
 
-        collisionCheck3d = get_collision_fn(ur5, UR5_JOINT_INDICES, obstacles=obstacles,
+        envs=[env1]
+
+        obstacles=envs[args.env_id]
+
+        collisionCheck3d=get_collision_fn(ur5, UR5_JOINT_INDICES, obstacles=obstacles,
                                             attachments=[], self_collisions=True,
                                             disabled_collisions=set())
 
-        prm = PRM(obstacleList=obstacles, randArea=[-20, 20], dof=dof, env='3d',
+        prm=PRM(obstacleList=obstacles, randArea=[-20, 20], dof=dof, env='3d',
                   collisionCheck3d=collisionCheck3d, ur5=ur5, UR5_JOINT_INDICES=UR5_JOINT_INDICES)
-        prm.planning3d(4000, radius=10, k=10)
+        prm.planning3d(4000, radius=10, k=10,
+                       show_animation=args.show_animation, save_every=args.save_every)
 
     else:
-        prm = PRM(obstacleList=obstacleList, randArea=[-20, 20], dof=dof)
+        prm=PRM(obstacleList=obstacleList,
+                randArea=[-20, 20], dof=dof, env='2d')
 
-        prm.planning(4000, radius=10, k=10)
+        prm.planning(4000, radius=10, k=10,
+                     show_animation=args.show_animation, save_every=args.save_every)
 
-    endtime = time.time()
+    endtime=time.time()
 
     # if path is None:
     #     print("FAILED to find a path in %.2fsec" % (endtime - starttime))
