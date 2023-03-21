@@ -2,9 +2,9 @@
 # FILENAME:  job_prm
 
 #SBATCH --nodes=1
-#SBATCH --partition=cuda-gpu
-# SBATCH --mem-per-cpu=64G
-#SBATCH --time=10:00:00
+#SBATCH --partition=jacobi-all
+# SBATCH --mem-per-cpu=256G
+#SBATCH --time=12:00:00
 #SBATCH --job-name prm
 
 
@@ -13,6 +13,7 @@
 
 echo "Starting job at $(date)"
 
-python prm_3d.py --env 3d
+python prm_3d.py --env-id 0 --env 3d --save-every 100
+
 
 echo "Done"

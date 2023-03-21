@@ -26,6 +26,7 @@ import random
 import sys
 from visualizer import visualize
 from collision_utils import get_collision_fn
+import resource
 
 
 UR5_JOINT_INDICES = [0, 1, 2]
@@ -212,7 +213,6 @@ class PRM():
             link_pos.append(self.getEndEffectorPos())
 
             if self.collisionCheck3d(start):
-                # print('COLLIDED')
                 return (False, None)
 
         end_pos = self.getEndEffectorPos()
@@ -226,7 +226,6 @@ class PRM():
 
             # print(len(link_pos))
 
-            # draw lines between link_pos
             for i in range(len(link_pos)-1):
                 p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
 
@@ -355,22 +354,44 @@ class PRM():
 
                     width = 640
                     height = 480
-                    view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[
-                                                                      0, 0, 0], distance=2, yaw=58, pitch=-42, roll=0, upAxisIndex=2)
-                    projection_matrix = p.computeProjectionMatrixFOV(
-                        fov=60, aspect=float(width)/height, nearVal=0.01, farVal=100)
-                    img_arr = p.getCameraImage(width=width, height=height, viewMatrix=view_matrix,
-                                               projectionMatrix=projection_matrix, shadow=True, renderer=p.ER_BULLET_HARDWARE_OPENGL)
 
-                    # create a PIL image object from the camera image array
-                    rgb_arr = np.array(img_arr[2])
-                    rgb_arr = rgb_arr[:, :, :3]  # remove alpha channel
-                    # rgb_img = Image.fromarray(rgb_arr)
+                    view_angles = [
+                        [58, -42, 0],
+                        [0, -90, 0],
+                        [0, -22, 0],
+                        [-90, -22, 0]
+                    ]
 
-                    # # save the image to a file
-                    # rgb_img.save("pybullet_view.png")
+                    for j, view_angle in enumerate(view_angles):
+                        view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[
+                                                                          0, 0, 0], distance=2, yaw=view_angle[0], pitch=view_angle[1], roll=view_angle[2], upAxisIndex=2)
+                        projection_matrix = p.computeProjectionMatrixFOV(
+                            fov=60, aspect=float(width)/height, nearVal=0.01, farVal=100)
+                        img_arr = p.getCameraImage(width=width, height=height, viewMatrix=view_matrix,
+                                                   projectionMatrix=projection_matrix, shadow=True, renderer=p.ER_BULLET_HARDWARE_OPENGL)
 
-                    plt.imsave(filename + ".png", rgb_arr)
+                        
+                        rgb_arr = np.array(img_arr[2])
+                        rgb_arr = rgb_arr[:, :, :3]
+
+                        plt.imsave(filename + "_{}.png".format(j), rgb_arr)
+
+
+
+
+                    # view_matrix = p.computeViewMatrixFromYawPitchRoll(cameraTargetPosition=[
+                    #                                                   0, 0, 0], distance=2, yaw=58, pitch=-42, roll=0, upAxisIndex=2)
+                    # projection_matrix = p.computeProjectionMatrixFOV(
+                    #     fov=60, aspect=float(width)/height, nearVal=0.01, farVal=100)
+                    # img_arr = p.getCameraImage(width=width, height=height, viewMatrix=view_matrix,
+                    #                            projectionMatrix=projection_matrix, shadow=True, renderer=p.ER_BULLET_HARDWARE_OPENGL)
+
+                    
+                    # rgb_arr = np.array(img_arr[2])
+                    # rgb_arr = rgb_arr[:, :, :3]  # remove alpha channel
+                    
+
+                    # plt.imsave(filename + ".png", rgb_arr)
 
 
 
@@ -442,19 +463,16 @@ class PRM():
         for start in nearNodesToStart:
             isCollisionFreeStart, startCost=self.steerTo(
                 start, originalStart)
-            # print(start.state, originalStart.state)
-            # print(startCost)
+
             if isCollisionFreeStart:
-                # print("Found collision free start")
+                print("Found collision free start")
                 for goal in nearNodesToGoal:
                     isCollisionFreeGoal, goalCost=self.steerTo(
                         goal, originalGoal)
                     if isCollisionFreeGoal:
-                        # print("Found collision free goal")
                         path, cost=self.dijkstra(start, goal)
                         if cost + startCost + goalCost < minCost:
                             minCost=cost + startCost + goalCost
-                            # append start and goal to path
                             path.insert(0, originalStart)
                             path.append(originalGoal)
                             finalPath=path
@@ -472,10 +490,6 @@ class PRM():
         returns: list of nodes representing the shortest path from start to goal.
         """
 
-        # print("Finding shortest path")
-
-        # print(start, flush=True)
-        # print(goal)
 
         sptSet=set()
         dist={}
@@ -499,7 +513,6 @@ class PRM():
                         dist[v]=alt
                         prev[v]=u
 
-        # reconstruct the shortest path
         path=[]
         curr=goal
 
@@ -544,7 +557,7 @@ class PRM():
             plt.scatter(node.state[0], node.state[1], color='b', zorder=1, s=3)
 
             # if epoch > 400 == 0:
-            if not show_animation:
+            if not show_animation or epoch > 300:
                 continue
 
             for node2 in node.neighbors:
@@ -582,15 +595,15 @@ class PRM():
 
 def main():
 
-    # print(resource.getrlimit(resource.RLIMIT_STACK))
-    # print(sys.getrecursionlimit())
+    print(resource.getrlimit(resource.RLIMIT_STACK))
+    print(sys.getrecursionlimit())
 
     max_rec=0x100000
 
     # May segfault without this line. 0x100 is a guess at the size of each stack frame.
-    # resource.setrlimit(resource.RLIMIT_STACK, [
-    #    0x100 * max_rec, resource.RLIM_INFINITY])
-    # sys.setrecursionlimit(max_rec)
+    resource.setrlimit(resource.RLIMIT_STACK, [
+       0x100 * max_rec, resource.RLIM_INFINITY])
+    sys.setrecursionlimit(max_rec)
 
     parser=argparse.ArgumentParser(description='CS 593-ROB - Assignment 1')
     parser.add_argument('-g', '--geom', default='point', choices=['point', 'circle', 'rectangle'],
@@ -630,12 +643,7 @@ def main():
         (10, 10, 5.0, 5.0),
     ]
 
-# left bottom, right top
-# leftx, lefty, rightx, righty
-    # (width, x, y, height)
-    # obstacleList = [
-    # (-5,0, 15.0, 5.0)
-    # ]
+
     start=[-10, -17]
     goal=[10, 10]
 
@@ -643,14 +651,16 @@ def main():
 
     if args.env == '3d':
         dof=3
-        physicsClient=p.connect(p.GUI)
+         # TODO uncomment following necessary lines for 3D gui window (doesm't work in ssh)
+        physicsClient = p.connect(p.DIRECT)
+        # physicsClient = p.connect(p.GUI)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
         p.setPhysicsEngineParameter(enableFileCaching=0)
         p.setGravity(0, 0, -9.8)
-        p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
-        p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, True)
-        p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
-                                     cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
+        # p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
+        # p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, True)
+        # p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
+        #                              cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
 
         # load objects
         plane=p.loadURDF("plane.urdf")
