@@ -1,6 +1,9 @@
 from prm_3d import PRM, Node
 import pickle
 
+# Implemented for 2d only for now, 3d is similar but in progress
+
+
 obstacleList=[
         (-15, 0, 15.0, 5.0),
         (15, -10, 5.0, 10.0),

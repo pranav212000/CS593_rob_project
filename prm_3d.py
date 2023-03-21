@@ -24,7 +24,6 @@ import math
 import os
 import random
 import sys
-from visualizer import visualize
 from collision_utils import get_collision_fn
 import resource
 
@@ -605,17 +604,7 @@ def main():
        0x100 * max_rec, resource.RLIM_INFINITY])
     sys.setrecursionlimit(max_rec)
 
-    parser=argparse.ArgumentParser(description='CS 593-ROB - Assignment 1')
-    parser.add_argument('-g', '--geom', default='point', choices=['point', 'circle', 'rectangle'],
-                        help='the geometry of the robot. Choose from "point" (Question 1), "circle" (Question 2), or "rectangle" (Question 3). default: "point"')
-    parser.add_argument('--alg', default='rrt', choices=['rrt', 'rrtstar'],
-                        help='which path-finding algorithm to use. default: "rrt"')
-    parser.add_argument('--iter', default=100, type=int,
-                        help='number of iterations to run')
-    parser.add_argument('--blind', action='store_true',
-                        help='set to disable all nodeLists. Useful for running in a headless session')
-    parser.add_argument('--fast', action='store_true',
-                        help='set to disable live animation. (the final results will still be shown in a nodeList). Useful for doing timing analysis')
+    parser=argparse.ArgumentParser(description='CS 593-ROB -Project')
     parser.add_argument('--env', default='2d', choices=['2d', '3d'],
                         help='the environment to run in. Choose from "2d" or "3d". default: "2d"')
     parser.add_argument('--env-id', default=0, type=int,
@@ -627,10 +616,6 @@ def main():
 
     args=parser.parse_args()
 
-    show_animation=not args.blind and not args.fast
-
-    print("Starting planning algorithm '%s' with '%s' robot geometry" %
-          (args.alg, args.geom))
     starttime=time.time()
 
     obstacleList=[
