@@ -186,7 +186,8 @@ class PRM():
             return np.linalg.norm(np.array(node1.conf) - np.array(node2.conf))
         return np.linalg.norm(np.array(node1.state) - np.array(node2.state))
 
-    def getNearNodes(self, newNode: Node, radius: float, k: int) -> list[Node]:
+    def getNearNodes(self, newNode: Node, radius: float, k: int):
+        
         nearNodes = []
 
         for node in self.nodeList:
@@ -526,12 +527,20 @@ class PRM():
             curr=prev[curr]
 
         pathcost=0
+        distance_from_start = [0]
         for i in range(len(path)-1):
             pathcost += path[i].neighbors[path[i+1]]
+            distance_from_start.append(pathcost)
+
 
         path.reverse()
+        
+        cost_to_goal = np.array(distance_from_start) - pathcost
+        cost_to_goal *= -1
+            
 
-        return path, pathcost
+
+        return path, pathcost, cost_to_goal
 
     def loadGraph(self, filename):
         with open(filename, 'rb') as f:

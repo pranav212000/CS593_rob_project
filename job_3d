@@ -9,7 +9,7 @@
 
 echo "Starting job at $(date)"
 
-python prm_3d.py --env-id 1 --env 3d --save-every 250 
+python prm_3d.py --env-id 9 --env 3d --save-every 250 
 
 
 echo "Done"
