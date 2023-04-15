@@ -25,7 +25,7 @@ import os
 import random
 import sys
 from collision_utils import get_collision_fn
-import resource
+# import resource
 
 
 UR5_JOINT_INDICES = [0, 1, 2]
@@ -333,22 +333,25 @@ class PRM():
             if i % save_every == 0:
                 if self.env == '2d':
 
-                    if not os.path.exists("2d"):
-                        os.mkdir("2d")
+                    if not os.path.exists("2d/{}".format(self.env_id)):
+                        os.makedirs("2d/{}".format(self.env_id))
 
-                    filename = "2d/graph_2d_env_{}_nodes_{}".format(
-                        self.env_id, i)
+                    filename = "2d/{}/graph_2d_env_{}_nodes_{}".format(
+                        self.env_id, self.env_id, i)
                     self.drawGraph(newNode, save=True, epoch=i,
                                    filename=filename + ".png")
                     self.saveGraph(filename + ".pkl")
 
                     print("Saved Graph: ", i)
                 else:
-                    if not os.path.exists("3d"):
-                        os.mkdir("3d")
+                    if not os.path.exists("3d/{}".format(self.env_id)):
+                        os.makedirs("3d/{}".format(self.env_id))
 
-                    filename = "3d/graph_3d_env_{}_nodes_{}".format(
-                        self.env_id, i)
+                    filename = "3d/{}/graph_3d_env_{}_nodes_{}".format(
+                        self.env_id,
+                        self.env_id,
+                        i)
+                    
                     self.saveGraph(filename + ".pkl")
 
                     width = 640
@@ -425,14 +428,11 @@ class PRM():
 
             # if i % 10 == 0:
             #     print("Iteration: ", i, flush=True)
-            
-        
-            if i == 1:
-                time.sleep(2)
+
             if i % save_every == 0:
-                if not os.path.exists("2d"):
-                    os.mkdir("2d")
-                filename="2d/graph_env_{}_nodes_{}".format(self.env_id, i)
+                if not os.path.exists("2d/{}".format(self.env_id)):
+                    os.makedirs("2d/{}".format(self.env_id))
+                filename="2d/{}/graph_env_{}_nodes_{}".format(self.env_id, self.env_id, i)
                 self.drawGraph(newNode, save=True, epoch=i,
                                filename=filename + ".png", show_animation=show_animation)
                 self.saveGraph(filename + ".pkl")
@@ -592,21 +592,21 @@ class PRM():
         plt.axis("equal")
         plt.axis([-20, 20, -20, 20])
         plt.grid(True)
-        plt.pause(0.01)
+        plt.pause(5.01)
 
 
 def main():
 
 #   TODO following code needs to be commented out to run on windows, along with import resource
-    print(resource.getrlimit(resource.RLIMIT_STACK))
-    print(sys.getrecursionlimit())
+    # print(resource.getrlimit(resource.RLIMIT_STACK))
+    # print(sys.getrecursionlimit())
 
-    max_rec=0x100000
+    # max_rec=0x100000
 
-    # May segfault without this line. 0x100 is a guess at the size of each stack frame.
-    resource.setrlimit(resource.RLIMIT_STACK, [
-       0x100 * max_rec, resource.RLIM_INFINITY])
-    sys.setrecursionlimit(max_rec)
+    # # May segfault without this line. 0x100 is a guess at the size of each stack frame.
+    # resource.setrlimit(resource.RLIMIT_STACK, [
+    #    0x100 * max_rec, resource.RLIM_INFINITY])
+    # sys.setrecursionlimit(max_rec)
 
     
     
@@ -615,7 +615,7 @@ def main():
     parser.add_argument('--env', default='2d', choices=['2d', '3d'],
                         help='the environment to run in. Choose from "2d" or "3d". default: "2d"')
     parser.add_argument('--env-id', default=0, type=int,
-                        choices=[0])
+                        choices=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
     parser.add_argument('--show-animation', action='store_true',
                         help='set to show edges in the graph')
     parser.add_argument('--save-every', default=20, type=int,
@@ -663,38 +663,62 @@ def main():
             # p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
             #                              cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
 
-        # load objects
+        
+        # load obstacles from pkl file
+        with open('envs/3d/env{}.pkl'.format(args.env_id), 'rb') as f:
+            env = pickle.load(f)
+
+
+        # obstacle1 = [-1/4, 0, 1/2]
+        # obstacle2 = [2/4, 0, 2/3]
+        # obstacle3 = [3/4, 0, 1/2]
+        # obstacle4 = [0, -3/5, 1/3]
+        # obstacle5 = [0, -1/8, 2/3]
+        # obstacle6 = [2/4, -1/3, 3/5]
+        # obstacle7 = [-3/4, -2/4, 3/3]
+
+        
+
+        
+
         plane=p.loadURDF("plane.urdf")
         ur5=p.loadURDF('assets/ur5/ur5.urdf',
                          basePosition=[0, 0, 0.02], useFixedBase=True)
-        obstacle1=p.loadURDF('assets/block.urdf',
-                               basePosition=[1/4, 0, 1/2],
-                               useFixedBase=True)
-        obstacle2=p.loadURDF('assets/block.urdf',
-                               basePosition=[2/4, 0, 2/3],
-                               useFixedBase=True)
-        obstacle3=p.loadURDF('assets/block.urdf',
-                                 basePosition=[-3/4, 0, 1/2],
-                                    useFixedBase=True)
-        obstacle4=p.loadURDF('assets/block.urdf',
-                                    basePosition=[0, 3/5, 1/3],
-                                    useFixedBase=True)
-        obstacle5=p.loadURDF('assets/block.urdf',
-                                    basePosition=[0, -1/8, 2/3],
-                                    useFixedBase=True)
-        obstacle6=p.loadURDF('assets/block.urdf',
-                                 basePosition=[-1/4, 1/3, 3/5],
-                                    useFixedBase=True)
-        obstacle7=p.loadURDF('assets/block.urdf',
-                               basePosition=[2/4, -1/4, 2/3],
-                               useFixedBase=True)
+        
+        obstacles = [plane]
 
-        env1=[plane, obstacle1, obstacle2, obstacle3, obstacle4,
-            obstacle5, obstacle6, obstacle7, obstacle6]
+        for i in range(len(env)):
+            obstacles.append(p.loadURDF('assets/block.urdf',
+                                        basePosition=env[i],
+                                        useFixedBase=True))
+        # obstacle1=p.loadURDF('assets/block.urdf',
+        #                        basePosition=env[0],
+        #                        useFixedBase=True)
+        # obstacle2=p.loadURDF('assets/block.urdf',
+        #                        basePosition=env[1],
+        #                        useFixedBase=True)
+        # obstacle3=p.loadURDF('assets/block.urdf',
+        #                          basePosition=env[2],
+        #                             useFixedBase=True)
+        # obstacle4=p.loadURDF('assets/block.urdf',
+        #                             basePosition=env[3],
+        #                             useFixedBase=True)
+        # obstacle5=p.loadURDF('assets/block.urdf',
+        #                             basePosition=env[4],
+        #                             useFixedBase=True)
+        # obstacle6=p.loadURDF('assets/block.urdf',
+        #                          basePosition=env[5],
+        #                             useFixedBase=True)
+        # obstacle7=p.loadURDF('assets/block.urdf',
+        #                        basePosition=env[6],
+        #                        useFixedBase=True)
 
-        envs=[env1]
+        # obstacles=[plane, obstacle1, obstacle2, obstacle3, obstacle4,
+        #     obstacle5, obstacle6, obstacle7, obstacle6]
 
-        obstacles=envs[args.env_id]
+        # envs=[env1]
+
+        
 
         collisionCheck3d=get_collision_fn(ur5, UR5_JOINT_INDICES, obstacles=obstacles,
                                             attachments=[], self_collisions=True,

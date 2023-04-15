@@ -2,3 +2,6 @@
 *.png
 *.pkl
 *.pyc
+
+# include files in envs/
+!envs/
