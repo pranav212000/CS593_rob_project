@@ -1,0 +1,14 @@
+#!/bin/bash
+# FILENAME:  job_prm
+
+#SBATCH --nodes=1
+#SBATCH --partition=jacobi-all
+#SBATCH --time=23:00:00
+#SBATCH --job-name dataset_collector
+
+
+echo "Starting job at $(date)"
+
+python dataset_collector.py --env 2d --env-id 9 --num-iter 5000 --save-every 100
+
+echo "Done"

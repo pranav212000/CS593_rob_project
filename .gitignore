@@ -5,3 +5,5 @@
 
 # include files in envs/
 !envs/**/*
+!2d/**/dataset.pkl
+!3d/**/dataset.pkl

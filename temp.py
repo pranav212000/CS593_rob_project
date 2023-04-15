@@ -2,16 +2,14 @@ import pickle
 import numpy as np
 from prm_3d import PRM, Node
 import argparse
-from tqdm import tqdm
 
 def main():
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--env-id', type=int, default=0)
     parser.add_argument('--env', type=str, default='2d')
-    parser.add_argument('--num-nodes', type=int, default=2500)
-    parser.add_argument('--num-iter', type=int, default=5000)
-    parser.add_argument('--save-every', type=int, default=500)
+    parser.add_argument('--num_nodes', type=int, default=2500)
+    parser.add_argument('--num_iter', type=int, default=5000)
     args = parser.parse_args()
 
     # load env0
@@ -27,7 +25,7 @@ def main():
     prm.nodeList = nodes
 
     dataset = []
-    for iter in tqdm(range(args.num_iter)):
+    for iter in range(args.num_iter):
 
         start = [np.random.uniform(-20, 20), np.random.uniform(-20, 20)]
         while not prm.collisionCheck(Node(state=start)):
@@ -40,37 +38,28 @@ def main():
 
 
         path, cost, cost_to_goal = prm.getShortestPath(start = Node(state=start), goal = Node(state=goal))
+        print('cost', cost)
 
-
-        if path is None:
-            continue
-        # print(cost)
-        # print('cost', cost)
-
-        # print('start', start)
-        # print('goal', goal)
+        print('start', start)
+        print('goal', goal)
         
 
-        data = np.array([])
-        start = np.array(start)
-        goal = np.array(goal)
-        
+        data = []
 
-        # print(len(path))
-        # print(len(cost_to_goal))
+        print(len(path))
+        print(len(cost_to_goal))
         # zip and print path and cost to goal
         for i in range(len(path)):
-            
-            state = np.array(path[i].state)
-            dataset.append(np.array([start[0], start[1], goal[0], goal[1],state[0], state[1], cost_to_goal[i]]))
-                
+            if i != len(path)-1 and i != 0:
+                data.append([start, goal, path[i].state, cost_to_goal[i]])
+                print(path[i].state, cost_to_goal[i])
 
-        
+        dataset.append(data)
 
-        if iter % args.save_every == 0:
+        if iter % 500 == 0:
             print('iter', iter)
             # save dataset
-            with open('2d/{}/dataset.pkl'.format(args.env_id), 'wb') as f:
+            with open('2d/{}/dataset.pkl'.format(env), 'wb') as f:
                 pickle.dump(dataset, f)
             
         

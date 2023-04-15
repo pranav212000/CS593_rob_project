@@ -462,6 +462,7 @@ class PRM():
         nearNodesToGoal=self.getNearNodes(goal, radius=50, k=1)
 
         finalPath=None
+        finalCostToGoal = None
         minCost=float('inf')
 
         for start in nearNodesToStart:
@@ -474,17 +475,24 @@ class PRM():
                     isCollisionFreeGoal, goalCost=self.steerTo(
                         goal, originalGoal)
                     if isCollisionFreeGoal:
-                        path, cost=self.dijkstra(start, goal)
+                        path, cost, cost_to_goal =self.dijkstra(start, goal)
                         if cost + startCost + goalCost < minCost:
                             minCost=cost + startCost + goalCost
                             path.insert(0, originalStart)
                             path.append(originalGoal)
                             finalPath=path
+                            # add element at start of np array
+                            cost_to_goal=np.insert(cost_to_goal, 0, cost+startCost)
+                            cost_to_goal=np.insert(cost_to_goal, -1, 0)
+                            cost_to_goal = cost_to_goal + goalCost
+                            cost_to_goal[-1] = 0
+                            finalCostToGoal=cost_to_goal
+                            
                             # print("Found path with cost: ", minCost)
 
                 # print("Found path with cost: ", minCost)
 
-        return finalPath, minCost
+        return finalPath, minCost, finalCostToGoal
 
     def dijkstra(self, start, goal):
         """
@@ -535,8 +543,8 @@ class PRM():
 
         path.reverse()
         
-        cost_to_goal = np.array(distance_from_start) - pathcost
-        cost_to_goal *= -1
+        cost_to_goal = pathcost - np.array(distance_from_start)
+        
             
 
 
