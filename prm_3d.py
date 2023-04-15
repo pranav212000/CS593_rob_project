@@ -26,7 +26,7 @@ import random
 import sys
 from collision_utils import get_collision_fn
 import datetime
-# import resource
+import resource
 
 
 UR5_JOINT_INDICES = [0, 1, 2]
@@ -200,7 +200,7 @@ class PRM():
         distance = self.getDistance(rand_node, nearest_node)
         n_steps = round(distance/step_size)
         if n_steps == 0:
-            return self.collisionCheck3d(rand_node.conf)
+            return (self.collisionCheck3d(rand_node.conf), distance)
         unit_step = (np.array(rand_node.conf) -
                      np.array(nearest_node.conf)) / n_steps
         start = np.array(nearest_node.conf)
@@ -457,8 +457,8 @@ class PRM():
         originalStart=copy.copy(start)
         originalGoal=copy.copy(goal)
 
-        nearNodesToStart=self.getNearNodes(start, radius=50, k=5)
-        nearNodesToGoal=self.getNearNodes(goal, radius=50, k=5)
+        nearNodesToStart=self.getNearNodes(start, radius=50, k=1)
+        nearNodesToGoal=self.getNearNodes(goal, radius=50, k=1)
 
         finalPath=None
         minCost=float('inf')
@@ -468,7 +468,7 @@ class PRM():
                 start, originalStart)
 
             if isCollisionFreeStart:
-                print("Found collision free start")
+                # print("Found collision free start")
                 for goal in nearNodesToGoal:
                     isCollisionFreeGoal, goalCost=self.steerTo(
                         goal, originalGoal)
@@ -480,6 +480,8 @@ class PRM():
                             path.append(originalGoal)
                             finalPath=path
                             # print("Found path with cost: ", minCost)
+
+                # print("Found path with cost: ", minCost)
 
         return finalPath, minCost
 
@@ -574,10 +576,10 @@ class PRM():
         if path is not None:
             for i, node in enumerate(path):
                 plt.scatter(node.state[0], node.state[1],
-                            color='g', zorder=1, s=10)
+                            color='g', zorder=1, s=30)
                 if i != 0:
                     plt.plot([path[i-1].state[0], node.state[0]], [path[i-1].state[1],
-                             node.state[1]], color='g', zorder=0, linewidth=1)
+                             node.state[1]], color='g', zorder=0, linewidth=2)
 
         if rnd is not None:
             plt.plot(rnd.state[0], rnd.state[1], "^k")
@@ -599,15 +601,15 @@ class PRM():
 def main():
 
 #   TODO following code needs to be commented out to run on windows, along with import resource
-    # print(resource.getrlimit(resource.RLIMIT_STACK))
-    # print(sys.getrecursionlimit())
+    print(resource.getrlimit(resource.RLIMIT_STACK))
+    print(sys.getrecursionlimit())
 
-    # max_rec=0x100000
+    max_rec=0x100000
 
-    # # May segfault without this line. 0x100 is a guess at the size of each stack frame.
-    # resource.setrlimit(resource.RLIMIT_STACK, [
-    #    0x100 * max_rec, resource.RLIM_INFINITY])
-    # sys.setrecursionlimit(max_rec)
+    # May segfault without this line. 0x100 is a guess at the size of each stack frame.
+    resource.setrlimit(resource.RLIMIT_STACK, [
+       0x100 * max_rec, resource.RLIM_INFINITY])
+    sys.setrecursionlimit(max_rec)
 
     
     

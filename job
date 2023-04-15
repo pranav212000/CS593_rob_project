@@ -13,6 +13,6 @@
 
 echo "Starting job at $(date)"
 
-python prm_3d.py --env-id 0 --env 2d --show-animation --save-every 100
+python prm_3d.py --env 2d --show-animation --save-every 250 --env-id 9
 
 echo "Done"

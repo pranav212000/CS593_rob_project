@@ -23,6 +23,7 @@ with open('2d/graph_env_0_nodes_1200.pkl', 'rb') as f:
 path, cost = prm.getShortestPath(start= Node(state=[-20, -20.0]), goal=Node(state=[20.0, 20.0]))
 
 # print(path)
+
 print('cost', cost)
 
 prm.drawGraph(path=path, save=True, filename='shortest_path.png', show_animation=False)
