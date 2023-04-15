@@ -25,7 +25,8 @@ import os
 import random
 import sys
 from collision_utils import get_collision_fn
-# import resource
+import datetime
+import resource
 
 
 UR5_JOINT_INDICES = [0, 1, 2]
@@ -598,15 +599,15 @@ class PRM():
 def main():
 
 #   TODO following code needs to be commented out to run on windows, along with import resource
-    # print(resource.getrlimit(resource.RLIMIT_STACK))
-    # print(sys.getrecursionlimit())
+    print(resource.getrlimit(resource.RLIMIT_STACK))
+    print(sys.getrecursionlimit())
 
-    # max_rec=0x100000
+    max_rec=0x100000
 
-    # # May segfault without this line. 0x100 is a guess at the size of each stack frame.
-    # resource.setrlimit(resource.RLIMIT_STACK, [
-    #    0x100 * max_rec, resource.RLIM_INFINITY])
-    # sys.setrecursionlimit(max_rec)
+    # May segfault without this line. 0x100 is a guess at the size of each stack frame.
+    resource.setrlimit(resource.RLIMIT_STACK, [
+       0x100 * max_rec, resource.RLIM_INFINITY])
+    sys.setrecursionlimit(max_rec)
 
     
     
@@ -624,6 +625,13 @@ def main():
     args=parser.parse_args()
 
     starttime=time.time()
+
+    timestamp = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    print(timestamp)
+
+    
+    print(args)
+
 
     obstacleList=[
         (-15, 0, 15.0, 5.0),
@@ -724,7 +732,7 @@ def main():
                                             attachments=[], self_collisions=True,
                                             disabled_collisions=set())
 
-        prm=PRM(obstacleList=obstacles, randArea=[-20, 20], dof=dof, env='3d',
+        prm=PRM(obstacleList=obstacles, randArea=[-20, 20], dof=dof, env='3d', env_id=args.env_id,
                   collisionCheck3d=collisionCheck3d, ur5=ur5, UR5_JOINT_INDICES=UR5_JOINT_INDICES)
         
         time.sleep(2)
@@ -732,7 +740,7 @@ def main():
                        show_animation=args.show_animation, save_every=args.save_every)
 
     else:
-        prm=PRM(obstacleList=obstacleList,
+        prm=PRM(obstacleList=obstacleList, env_id=args.env_id,
                 randArea=[-20, 20], dof=dof, env='2d')
 
         
