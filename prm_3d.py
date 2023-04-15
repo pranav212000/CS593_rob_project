@@ -26,7 +26,7 @@ import random
 import sys
 from collision_utils import get_collision_fn
 import datetime
-import resource
+# import resource
 
 
 UR5_JOINT_INDICES = [0, 1, 2]
@@ -593,21 +593,21 @@ class PRM():
         plt.axis("equal")
         plt.axis([-20, 20, -20, 20])
         plt.grid(True)
-        plt.pause(5.01)
+        plt.pause(0.01)
 
 
 def main():
 
 #   TODO following code needs to be commented out to run on windows, along with import resource
-    print(resource.getrlimit(resource.RLIMIT_STACK))
-    print(sys.getrecursionlimit())
+    # print(resource.getrlimit(resource.RLIMIT_STACK))
+    # print(sys.getrecursionlimit())
 
-    max_rec=0x100000
+    # max_rec=0x100000
 
-    # May segfault without this line. 0x100 is a guess at the size of each stack frame.
-    resource.setrlimit(resource.RLIMIT_STACK, [
-       0x100 * max_rec, resource.RLIM_INFINITY])
-    sys.setrecursionlimit(max_rec)
+    # # May segfault without this line. 0x100 is a guess at the size of each stack frame.
+    # resource.setrlimit(resource.RLIMIT_STACK, [
+    #    0x100 * max_rec, resource.RLIM_INFINITY])
+    # sys.setrecursionlimit(max_rec)
 
     
     
@@ -642,6 +642,13 @@ def main():
         (5, -5, 5.0, 5.0),
         (10, 10, 5.0, 5.0),
     ]
+
+
+    
+    env = pickle.load(open('envs/2d/env{}.pkl'.format(args.env_id), 'rb'))
+    obstacleList = env
+
+
 
 
     start=[-10, -17]
