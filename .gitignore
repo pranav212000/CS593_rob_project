@@ -4,4 +4,4 @@
 *.pyc
 
 # include files in envs/
-!envs/
+!envs/**/*
