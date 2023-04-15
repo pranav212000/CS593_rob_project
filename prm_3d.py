@@ -425,7 +425,10 @@ class PRM():
 
             # if i % 10 == 0:
             #     print("Iteration: ", i, flush=True)
-
+            
+        
+            if i == 1:
+                time.sleep(2)
             if i % save_every == 0:
                 if not os.path.exists("2d"):
                     os.mkdir("2d")
@@ -594,6 +597,7 @@ class PRM():
 
 def main():
 
+#   TODO following code needs to be commented out to run on windows, along with import resource
     print(resource.getrlimit(resource.RLIMIT_STACK))
     print(sys.getrecursionlimit())
 
@@ -604,15 +608,18 @@ def main():
        0x100 * max_rec, resource.RLIM_INFINITY])
     sys.setrecursionlimit(max_rec)
 
+    
+    
+
     parser=argparse.ArgumentParser(description='CS 593-ROB -Project')
     parser.add_argument('--env', default='2d', choices=['2d', '3d'],
                         help='the environment to run in. Choose from "2d" or "3d". default: "2d"')
     parser.add_argument('--env-id', default=0, type=int,
-                        choices=[0, 1, 2, 3, 4, 5])
+                        choices=[0])
     parser.add_argument('--show-animation', action='store_true',
-                        help='set to show edges in the graph. Useful for debugging')
+                        help='set to show edges in the graph')
     parser.add_argument('--save-every', default=20, type=int,
-                        help='set to save the graph every n iterations. Useful for debugging')
+                        help='set to save the graph every n iterations')
 
     args=parser.parse_args()
 
@@ -637,15 +644,24 @@ def main():
     if args.env == '3d':
         dof=3
          # TODO uncomment following necessary lines for 3D gui window (doesm't work in ssh)
-        physicsClient = p.connect(p.DIRECT)
-        # physicsClient = p.connect(p.GUI)
-        p.setAdditionalSearchPath(pybullet_data.getDataPath())
-        p.setPhysicsEngineParameter(enableFileCaching=0)
-        p.setGravity(0, 0, -9.8)
-        # p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
-        # p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, True)
-        # p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
-        #                              cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
+        if args.show_animation:
+            physicsClient = p.connect(p.GUI)
+            p.setAdditionalSearchPath(pybullet_data.getDataPath())
+            p.setPhysicsEngineParameter(enableFileCaching=0)
+            p.setGravity(0, 0, -9.8)
+            p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
+            p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, True)
+            p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000, cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
+        else :
+            physicsClient = p.connect(p.DIRECT)
+            
+            p.setAdditionalSearchPath(pybullet_data.getDataPath())
+            p.setPhysicsEngineParameter(enableFileCaching=0)
+            p.setGravity(0, 0, -9.8)
+            # p.configureDebugVisualizer(p.COV_ENABLE_GUI, False)
+            # p.configureDebugVisualizer(p.COV_ENABLE_SHADOWS, True)
+            # p.resetDebugVisualizerCamera(cameraDistance=1.400, cameraYaw=58.000,
+            #                              cameraPitch=-42.200, cameraTargetPosition=(0.0, 0.0, 0.0))
 
         # load objects
         plane=p.loadURDF("plane.urdf")
@@ -686,6 +702,8 @@ def main():
 
         prm=PRM(obstacleList=obstacles, randArea=[-20, 20], dof=dof, env='3d',
                   collisionCheck3d=collisionCheck3d, ur5=ur5, UR5_JOINT_INDICES=UR5_JOINT_INDICES)
+        
+        time.sleep(2)
         prm.planning3d(4000, radius=10, k=10,
                        show_animation=args.show_animation, save_every=args.save_every)
 
@@ -693,6 +711,7 @@ def main():
         prm=PRM(obstacleList=obstacleList,
                 randArea=[-20, 20], dof=dof, env='2d')
 
+        
         prm.planning(4000, radius=10, k=10,
                      show_animation=args.show_animation, save_every=args.save_every)
 

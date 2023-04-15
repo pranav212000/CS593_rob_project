@@ -19,6 +19,7 @@ prm = PRM(obstacleList=obstacleList, randArea=[-20, 20])
 with open('2d/graph_env_0_nodes_1200.pkl', 'rb') as f:
     prm.nodeList = pickle.load(f)
 
+# start and goal node can be randomly sampled
 path, cost = prm.getShortestPath(start= Node(state=[-20, -20.0]), goal=Node(state=[20.0, 20.0]))
 
 # print(path)
