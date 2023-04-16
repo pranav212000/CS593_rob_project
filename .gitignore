@@ -3,6 +3,8 @@
 *.pkl
 *.pyc
 
+runs/
+
 # include files in envs/
 !envs/**/*
 !2d/**/dataset.pkl

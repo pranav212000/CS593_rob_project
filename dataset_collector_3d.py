@@ -124,7 +124,7 @@ def main():
         if iter % args.save_every == 0:
             # print('iter', iter)
             # save dataset
-            with open('2d/{}/dataset.pkl'.format(args.env_id), 'wb') as f:
+            with open('3d/{}/dataset.pkl'.format(args.env_id), 'wb') as f:
                 pickle.dump(dataset, f)
 
 
