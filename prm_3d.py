@@ -466,15 +466,24 @@ class PRM():
         minCost=float('inf')
 
         for start in nearNodesToStart:
-            isCollisionFreeStart, startCost=self.steerTo(
-                start, originalStart)
+            if self.env == "2d":
+                isCollisionFreeStart, startCost=self.steerTo(
+                    start, originalStart)
+            else:
+                isCollisionFreeStart, startCost=self.steerTo3d(
+                    start, originalStart)
 
             if isCollisionFreeStart:
                 # print("Found collision free start")
                 for goal in nearNodesToGoal:
-                    isCollisionFreeGoal, goalCost=self.steerTo(
-                        goal, originalGoal)
+                    if self.env == "2d":
+                        isCollisionFreeGoal, goalCost=self.steerTo(
+                            goal, originalGoal)
+                    else:
+                        isCollisionFreeGoal, goalCost=self.steerTo3d(
+                            goal, originalGoal)
                     if isCollisionFreeGoal:
+                        # print("Found collision free goal")
                         path, cost, cost_to_goal =self.dijkstra(start, goal)
                         if cost + startCost + goalCost < minCost:
                             minCost=cost + startCost + goalCost
@@ -490,10 +499,14 @@ class PRM():
                             
                             # print("Found path with cost: ", minCost)
 
+                        
+
                 # print("Found path with cost: ", minCost)
 
         return finalPath, minCost, finalCostToGoal
+    
 
+    
     def dijkstra(self, start, goal):
         """
         Finds the shortest path between start and goal.
@@ -506,6 +519,7 @@ class PRM():
 
 
         sptSet=set()
+        visited=set()
         dist={}
         prev={}
 
@@ -514,18 +528,27 @@ class PRM():
             prev[node]=None
 
         dist[start]=0
+        
+        prev_set_size = 0
+        for i in range(len(self.nodeList)):
 
-        while len(sptSet) != len(self.nodeList):
-            u=min(dist, key=lambda node: dist[node]
-                    if node not in sptSet else float('inf'))
-            sptSet.add(u)
+            min_dis = float('inf')
+            min_node = None
+            for node in self.nodeList:
+                if node not in visited and dist[node] < min_dis:
+                    min_node=node
 
-            for v in u.neighbors:
-                if v not in sptSet:
-                    alt=dist[u] + u.neighbors[v]
-                    if alt < dist[v]:
-                        dist[v]=alt
-                        prev[v]=u
+            if min_node is None:
+                break
+
+            visited.add(min_node)
+
+            for neighbor in min_node.neighbors:
+                if neighbor not in visited:
+                    alt = dist[min_node] + min_node.neighbors[neighbor]
+                    if alt < dist[neighbor]:
+                        dist[neighbor]=alt
+                        prev[neighbor]=min_node
 
         path=[]
         curr=goal
@@ -540,15 +563,12 @@ class PRM():
             pathcost += path[i].neighbors[path[i+1]]
             distance_from_start.append(pathcost)
 
-
         path.reverse()
         
         cost_to_goal = pathcost - np.array(distance_from_start)
         
-            
-
-
         return path, pathcost, cost_to_goal
+
 
     def loadGraph(self, filename):
         with open(filename, 'rb') as f:

@@ -20,7 +20,7 @@ def main():
 
     prm = PRM(obstacleList=env0, randArea=[-20, 20])
 
-    # open nodelist file
+    
     with open('{}/{}/graph_env_{}_nodes_{}.pkl'.format(args.env, args.env_id, args.env_id, args.num_nodes), 'rb') as f:
         nodes = pickle.load(f)
 
@@ -60,7 +60,7 @@ def main():
         # print(len(cost_to_goal))
         # zip and print path and cost to goal
         for i in range(len(path)):
-            
+            # print('path', path[i].state, 'cost', cost_to_goal[i])
             state = np.array(path[i].state)
             dataset.append(np.array([start[0], start[1], goal[0], goal[1],state[0], state[1], cost_to_goal[i]]))
                 
@@ -68,7 +68,6 @@ def main():
         
 
         if iter % args.save_every == 0:
-            print('iter', iter)
             # save dataset
             with open('2d/{}/dataset.pkl'.format(args.env_id), 'wb') as f:
                 pickle.dump(dataset, f)
