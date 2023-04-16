@@ -14,6 +14,7 @@ import os
 import random
 import progressbar
 import psutil
+import datetime
 
 
 from torch.utils.tensorboard import SummaryWriter
@@ -21,6 +22,10 @@ writer = SummaryWriter()
 
 
 def main(args):
+
+
+    timestamp = datetime.datetime.now().strftime("%d_%H%M%S")
+    print('timestamp: ', timestamp)
 
     # set seed
     torch_seed = np.random.randint(low=0, high=1000)
@@ -123,7 +128,7 @@ def main(args):
     record_i = 0
     val_record_loss = 0.
     val_record_i = 0
-    for epoch in range(args.start_epoch+1, args.epochs+1):
+    for epoch in range(args.start_epoch, args.epochs+1):
 
         sum_train_loss = 0.0
         sum_val_loss = 0.0
@@ -226,8 +231,14 @@ def main(args):
 
         # Save the models every 50 epochs
         if epoch % 50 == 0:
-            model_path = "models/model_env_{}_epoch_{}.pkl".format(
-                args.env_type, epoch)
+            
+            # create a time stamp folder
+            if not os.path.exists('models/{}'.format(timestamp)):
+                os.makedirs('models/{}'.format(timestamp))
+
+
+            model_path = "{}/model_env_{}_epoch_{}.pkl".format(timestamp,args.env_type, epoch)
+            print(model_path)
             # model_path='mpnet_epoch_%d.pkl' %(epoch)
             save_state(model, torch_seed, np_seed, py_seed,
                        os.path.join(args.model_path, model_path))
