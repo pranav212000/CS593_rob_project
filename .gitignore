@@ -4,6 +4,8 @@
 *.pyc
 
 runs/
+models/
+
 
 # include files in envs/
 !envs/**/*

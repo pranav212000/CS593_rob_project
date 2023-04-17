@@ -7,7 +7,7 @@ import pickle
 from tqdm import tqdm
 
 
-def data_loader_2d(N=10):
+def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = False):
     print('Loading data...', flush=True)
     # load obstacles from pickle file
     obs = []
@@ -23,6 +23,7 @@ def data_loader_2d(N=10):
         obs.append(temp)
 
     obs = np.array(obs)
+    obs = obs / 20.0
 
 
 
@@ -53,7 +54,19 @@ def data_loader_2d(N=10):
     targets = np.array(targets)
     targets = np.expand_dims(targets, axis=1)
     dataset = np.array(dataset)
+
+    if not with_start:
+        dataset = dataset[:, 2:]
+
+    # range -1 to 1
+    dataset = dataset / 20.0
+
+
+
     env_indices = np.array(env_indices)
+
+    if get_together:
+        dataset = np.concatenate((obs[env_indices], dataset), axis=1)
 
     # print('targets : ', targets)
     # print('dataset : ', dataset)
@@ -65,17 +78,12 @@ def data_loader_2d(N=10):
     targets = np.array(targets)
     env_indices = np.array(env_indices)
 
-    # print('targets : ', targets)
-    # print('dataset : ', dataset)
-    # print('env_indices : ', env_indices)
+    if samples > len(dataset):
+        samples = len(dataset)
 
-    # print('targets.shape', targets.shape)
-    # print('dataset.shape', dataset.shape)
-    # print('env_indices.shape', env_indices.shape)
-    # print(env_indices[1], env_indices[-1])
-    # print(dataset.shape)
 
-    return obs, dataset, targets, env_indices
+    
+    return obs, dataset[:samples], targets[:samples], env_indices[:samples]
 
 
 

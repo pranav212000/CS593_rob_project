@@ -26,7 +26,6 @@ from tensorboardX import SummaryWriter
 
 def main(args):
 
-
     timestamp = datetime.datetime.now().strftime("%d_%H%M%S")
     print('timestamp: ', timestamp)
 
@@ -65,10 +64,10 @@ def main(args):
         CAE = CAE_2d
         MLP = mlp.MLP
 
-
     model = End2EndMPNet(total_input_size, AE_input_size, mlp_input_size,
                          output_size, CAE, MLP)
-    
+
+    model = MLPComplete(total_input_size, output_size)
 
     if args.env_type == '2d' or args.env_type == '3d':
         loss_f = model.loss
@@ -102,21 +101,22 @@ def main(args):
               torch.cuda.get_device_name(torch.cuda.current_device()))
 
         model.cuda()
-        
 
         if hasattr(model, 'encoder'):
             model.encoder.cuda()
 
-
     if args.opt == 'Adagrad':
-        model.set_opt(torch.optim.Adagrad, lr=args.learning_rate)
+        optimizer = torch.optim.Adagrad(model.parameters(), lr=args.learning_rate)
+        
     elif args.opt == 'Adam':
-        model.set_opt(torch.optim.Adam, lr=args.learning_rate)
+        optimizer = torch.optim.Adagrad(model.parameters(), lr=args.learning_rate)
     elif args.opt == 'SGD':
-        model.set_opt(torch.optim.SGD, lr=args.learning_rate, momentum=0.9)
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9)
     elif args.opt == 'ASGD':
-        model.set_opt(torch.optim.ASGD, lr=args.learning_rate)
+        optimizer = torch.optim.ASGD(model.parameters(), lr=args.learning_rate)
 
+    model.opt = optimizer
+    
     # scheduler = StepLR(model.opt, step_size=args.decay_step, gamma=args.decay_rate, verbose=True)
     # scheduler = ReduceLROnPlateau(model.opt, mode='min', factor=args.decay_rate, patience=args.decay_step, verbose=True)
 
@@ -125,7 +125,8 @@ def main(args):
 
     # load train and test data
     print('loading...')
-    obstacles, dataset, targets, env_indices = data_loader_2d(N=args.N, with_start = args.with_start, samples = 2001)
+    obstacles, dataset, targets, env_indices = data_loader_2d(
+        N=args.N, with_start=args.with_start, samples=args.samples, get_together=True)
     print('obstacles.shape', np.array(obstacles).shape, flush=True)
     print('dataset.shape', np.array(dataset).shape, flush=True)
     print('target.shape', np.array(targets).shape, flush=True)
@@ -145,6 +146,21 @@ def main(args):
     record_i = 0
     val_record_loss = 0.
     val_record_i = 0
+
+    print(model)
+    model.train()
+    # print number of parameters
+    total_params = sum(
+        param.numel() for param in model.parameters()
+    )
+
+    trainable_params = sum(
+        param.numel() for param in model.parameters() if param.requires_grad
+    )
+    print('Total number of trainable parameters: {}'.format(trainable_params))
+
+    print('Total number of parameters: {}'.format(total_params))
+
     for epoch in range(args.start_epoch, args.epochs+1):
 
         sum_train_loss = 0.0
@@ -193,10 +209,16 @@ def main(args):
             # print('batch_env_indices.shape', batch_env_indices.shape)
             # print('batch_obstacles.shape', batch_obstacles.shape)
 
-            model.step(batch_data, batch_obstacles, batch_target)
+            model.zero_grad()
+            loss = loss_f(model(batch_data), batch_target)
+            loss.backward()
+            loss = loss.item()
+            optimizer.step()
 
-            loss = loss_f(model(batch_data, batch_obstacles),
-                          batch_target).item()
+            # model.step(batch_data, batch_target)
+
+            # loss = loss_f(model(batch_data),
+            #               batch_target).item()
 
             sum_train_loss += loss * args.batch_size
             record_loss += loss
@@ -232,7 +254,7 @@ def main(args):
 
             # temp = model(batch_data, batch_obstacles)
 
-            loss = loss_f(model(batch_data, batch_obstacles),
+            loss = loss_f(model(batch_data),
                           batch_target).item()
             sum_val_loss += loss * args.batch_size
 
@@ -247,27 +269,32 @@ def main(args):
             #     bar.update(train_loss=sum_train_loss / (i + args.batch_size),
             #            val_loss=sum_val_loss / (i + args.batch_size))
 
-            if i % 250 == 0:
-                print('epoch {}, batch: {}/{}, train loss {}, val loss {}'.format(epoch, i / args.batch_size, len(dataset) / args.batch_size, sum_train_loss / (i + args.batch_size), sum_val_loss / (i + args.batch_size)), flush=True)
+            # if i % 250 == 0:
+            #     print('epoch {}, batch: {}/{}, train loss {}, val loss {}'.format(epoch, i / args.batch_size, len(dataset) / args.batch_size, sum_train_loss / (i + args.batch_size), sum_val_loss / (i + args.batch_size)), flush=True)
 
-
-        print('epoch {}/{}, train loss {}, val loss {}'.format(epoch, args.epochs, sum_train_loss / len(dataset), sum_val_loss / len(dataset)), flush=True)
+        print('epoch {}/{}, train loss {}, val loss {}'.format(epoch, args.epochs,
+              sum_train_loss / len(dataset), sum_val_loss / len(dataset)), flush=True)
 
         # scheduler.step()
 
         # Save the models every 50 epochs
         if epoch % 50 == 0:
-            
+
             # create a time stamp folder
             if not os.path.exists('models/{}'.format(timestamp)):
                 os.makedirs('models/{}'.format(timestamp))
 
-
-            model_path = "{}/model_env_{}_epoch_{}.pkl".format(timestamp,args.env_type, epoch)
+            model_path = "{}/model_env_{}_epoch_{}.pkl".format(
+                timestamp, args.env_type, epoch)
             print(model_path)
             # model_path='mpnet_epoch_%d.pkl' %(epoch)
             save_state(model, torch_seed, np_seed, py_seed,
                        os.path.join(args.model_path, model_path))
+
+            entire_model_path = "{}/entire_model_env_{}_epoch_{}.pt".format(
+                timestamp, args.env_type, epoch)
+
+            torch.save(model, os.path.join(args.model_path, entire_model_path))
             # test
     writer.export_scalars_to_json("./all_scalars.json")
     writer.close()
@@ -295,6 +322,7 @@ parser.add_argument('--decay-step', type=int, default=20)
 parser.add_argument('--decay-rate', type=float, default=0.5)
 parser.add_argument('--opt', type=str, default='Adagrad')
 parser.add_argument('--with-start', action='store_true')
+parser.add_argument('--samples', type=int, default=10000)
 
 args = parser.parse_args()
 print(args)

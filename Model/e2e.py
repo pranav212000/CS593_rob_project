@@ -20,6 +20,9 @@ class End2EndMPNet(nn.Module):
         else:
             self.opt = opt(list(self.encoder.parameters())+list(self.mlp.parameters()), lr=lr, momentum=momentum)
 
+    def get_opt(self):
+        return self.opt
+
     def loss(self, pred, truth):
         return self.mse(pred, truth)
 
