@@ -132,12 +132,24 @@ def main(args):
     print('target.shape', np.array(targets).shape, flush=True)
     print('env_indices.shape', np.array(env_indices).shape, flush=True)
 
-    val_size = 1000
+    # 0.9 train, val split
+    val_size = int(0.1*len(dataset))
 
-    val_dataset = dataset[:-val_size]
+    # val_dataset = dataset[:-val_size]
+    # val_targets = targets[:-val_size]
+    # val_env_indices = env_indices[:-val_size]
+
+    dataset = dataset[:-val_size]
+    targets = targets[:-val_size]
+    env_indices = env_indices[:-val_size]
+
+    val_dataset = dataset[-val_size:]
+    val_targets = targets[-val_size:]
+    val_env_indices = env_indices[-val_size:]
+
+    print('dataset.shape', np.array(dataset).shape, flush=True)
     print('val_dataset.shape', np.array(val_dataset).shape, flush=True)
-    val_targets = targets[:-val_size]
-    val_env_indices = env_indices[:-val_size]
+
     # Train the Models
     print('training...')
     writer_fname = '%s_%f_%s' % (args.env_type, args.learning_rate, args.opt)

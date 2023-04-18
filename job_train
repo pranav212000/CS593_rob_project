@@ -11,4 +11,4 @@
 # python train.py --N 10 --epochs 2000  --learning-rate 0.01 --decay-step 25 --decay-rate 0.8 --batch-size 128
 
 
-python train_complete_model.py --N 10 --epochs 2000  --learning-rate 0.01 --decay-step 25 --decay-rate 0.8 --batch-size 128 --samples 20000
+python train_complete_model.py --N 10 --epochs 10000  --learning-rate 0.01 --decay-step 25 --decay-rate 0.8 --batch-size 2048 --samples 200000
