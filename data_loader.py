@@ -1,6 +1,3 @@
-# data loader for the dataset
-# input is obstacle list, start point, goal point and output is the cost
-
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle 
@@ -9,15 +6,11 @@ from tqdm import tqdm
 
 def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = False):
     print('Loading data...', flush=True)
-    # load obstacles from pickle file
     obs = []
     for i in range(0,N):
-        # load obstacles from pickle file
+
         temp = pickle.load(open('envs/2d/env'+str(i)+'_pc.pkl', 'rb'))
-        # print(temp)
-        # make temp a 1d array
         temp = np.array(temp)
-        # flatten the array
         temp = temp.flatten()
 
         obs.append(temp)
@@ -35,8 +28,6 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
         env = np.array(env)
         target = env[:, -1]
         data = env[:, :-1]
-        # print(target.shape)
-        # print(data.shape)
         
         targets = np.concatenate((targets, target))
         if dataset is None:
@@ -58,7 +49,7 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
     if not with_start:
         dataset = dataset[:, 2:]
 
-    # range -1 to 1
+   
     dataset = dataset / 20.0
 
 
@@ -68,9 +59,7 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
     if get_together:
         dataset = np.concatenate((obs[env_indices], dataset), axis=1)
 
-    # print('targets : ', targets)
-    # print('dataset : ', dataset)
-    # print('env_indices : ', env_indices)
+   
     zipped = list(zip(dataset, targets, env_indices))
     np.random.shuffle(zipped)
     dataset, targets, env_indices = zip(*zipped)
@@ -91,16 +80,16 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
 def load_train_dataset(N=10):
     obs = []
     for i in range(0,N):
-        # load obstacles from pickle file
+    
         temp = pickle.load(open('envs/2d/env'+str(i)+'_pc.pkl', 'rb'))
-        # print(temp)
+    
         obs.append(temp)
     obs = np.array(obs)
 
-    # load dataset from 2d folder
+    
     costs = []
     for i in range(0,N):
-        # open environment folder from 2d folder
+      
         env = pickle.load(open('2d/'+str(i)+'/dataset.pkl', 'rb'))
         costs.append(env)
 
@@ -115,14 +104,13 @@ def load_train_dataset(N=10):
         
         for cost in costs[i]:
             temp2 = []
-            # add data from temp in temp2
             temp2.extend(temp)
             temp2.append(cost[2])
             temp2.append(cost[3])
             temp2.append(cost[4])
             temp2.append(cost[5])
             temp2.append(cost[6])
-            # add temp2 to data
+        
             # print(cost)
             # break
             data.append(temp2)
@@ -131,13 +119,9 @@ def load_train_dataset(N=10):
     return data
         
         
-# define a function to load data in batches
 def load_batch(data, batch_size):
-    # shuffle the data
     np.random.shuffle(data)
-    # get the number of batches
     n_batches = len(data)//batch_size
-    # get the data in batches
     batches = np.array_split(data, n_batches)
     return batches
 

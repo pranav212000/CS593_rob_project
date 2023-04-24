@@ -14,7 +14,6 @@ import pickle
 from tqdm import tqdm
 import pickle
 import sys
-from types import NoneType
 import pybullet as p
 import pybullet_data
 import numpy as np
@@ -26,7 +25,6 @@ import random
 import sys
 from collision_utils import get_collision_fn
 import datetime
-import resource
 from prm_3d import PRM, Node, set_joint_positions
 
 UR5_JOINT_INDICES = [0, 1, 2]
@@ -72,7 +70,7 @@ def main():
     prm = PRM(obstacleList=obstacles, randArea=[-20, 20], dof=dof, env='3d', env_id=args.env_id,
               collisionCheck3d=collisionCheck3d, ur5=ur5, UR5_JOINT_INDICES=UR5_JOINT_INDICES)
 
-    # open nodelist file
+    
     with open('{}/{}/graph_{}_env_{}_nodes_{}.pkl'.format(args.env, args.env_id, args.env, args.env_id, args.num_nodes), 'rb') as f:
         nodes = pickle.load(f)
 
@@ -102,19 +100,12 @@ def main():
 
         if path is None:
             continue
-        # print(cost)
-        # print('cost', cost)
-
-        # print('start', start)
-        # print('goal', goal)
+        
 
         data = np.array([])
         start = np.array(start)
         goal = np.array(goal)
 
-        # print(len(path))
-        # print(len(cost_to_goal))
-        # zip and print path and cost to goal
         for i in range(len(path)):
 
             state = np.array(path[i].state)
@@ -123,7 +114,7 @@ def main():
 
         if iter % args.save_every == 0:
             # print('iter', iter)
-            # save dataset
+            
             with open('3d/{}/dataset.pkl'.format(args.env_id), 'wb') as f:
                 pickle.dump(dataset, f)
 

@@ -9,7 +9,7 @@
 
 echo "Starting job at $(date)"
 
-python dataset_collector.py --env 2d --env-id 1 --save-every 250 --num-iter 5000 --num-nodes 2000
+python dataset_collector.py --env 2d --env-id 0 --save-every 250 --num-iter 5000 --num-nodes 2000
 
 # python dataset_collector_3d.py --env 3d --env-id 0 --save-every 250 --num-iter 5000 --num-nodes 2000
 

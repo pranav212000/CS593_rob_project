@@ -15,7 +15,6 @@ from tqdm import tqdm
 import pickle
 import resource
 import sys
-from types import NoneType
 import pybullet as p
 import pybullet_data
 import numpy as np
@@ -272,7 +271,6 @@ class PRM():
                         path, cost = self.dijkstra(start, goal)
                         if cost + startCost + goalCost < minCost:
                             minCost = cost + startCost + goalCost
-                            # append start and goal to path
                             path.insert(0, originalStart)
                             path.append(originalGoal)
                             finalPath = path
@@ -321,7 +319,6 @@ class PRM():
                         dist[v] = alt
                         prev[v] = u
 
-        # reconstruct the shortest path
         path = []
         curr = goal
 

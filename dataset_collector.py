@@ -14,7 +14,7 @@ def main():
     parser.add_argument('--save-every', type=int, default=500)
     args = parser.parse_args()
 
-    # load env0
+    
     with open('envs/{}/env{}.pkl'.format(args.env, args.env_id), 'rb') as f:
         env0 = pickle.load(f)
 
@@ -58,7 +58,7 @@ def main():
 
         # print(len(path))
         # print(len(cost_to_goal))
-        # zip and print path and cost to goal
+        
         for i in range(len(path)):
             # print('path', path[i].state, 'cost', cost_to_goal[i])
             state = np.array(path[i].state)
@@ -68,7 +68,7 @@ def main():
         
 
         if iter % args.save_every == 0:
-            # save dataset
+            
             with open('2d/{}/dataset.pkl'.format(args.env_id), 'wb') as f:
                 pickle.dump(dataset, f)
             
