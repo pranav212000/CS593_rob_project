@@ -2,13 +2,12 @@
 # FILENAME:  rob_train
 
 #SBATCH --nodes=1
-#SBATCH --partition=gorman-gpu
-#SBATCH --gpus-per-node=1
-#SBATCH --time=23:00:00
+#SBATCH --partition=jacobi-all
+#SBATCH --time=3-23:00:00
 #SBATCH --job-name rob_train
 
 
 # python train.py --N 10 --epochs 2000  --learning-rate 0.01 --decay-step 25 --decay-rate 0.8 --batch-size 128
 
 
-python train_complete_model.py --N 10 --epochs 10000  --learning-rate 0.01 --decay-step 25 --decay-rate 0.8 --batch-size 1024 --samples 200000
+python train_complete_model.py --N 10 --epochs 15000  --learning-rate 0.001 --batch-size 256 --samples 10000 --activation relu --dropout 0.2 --opt SGD 

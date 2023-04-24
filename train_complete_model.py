@@ -49,6 +49,14 @@ def main(args):
             total_input_size = 2800+4
             AE_input_size = 2800
             mlp_input_size = 28+4
+
+        if not args.point_cloud:
+            total_input_size -= 2800 - 28
+            AE_input_size -= 2800 - 28
+            
+
+
+
         output_size = 1
         load_train_dataset = data_loader_2d
 
@@ -66,8 +74,21 @@ def main(args):
 
     model = End2EndMPNet(total_input_size, AE_input_size, mlp_input_size,
                          output_size, CAE, MLP)
-
-    model = MLPComplete(total_input_size, output_size)
+    
+    if args.activation == 'relu':
+        activation_f = torch.nn.ReLU
+    elif args.activation == 'tanh':
+        activation_f = torch.nn.Tanh
+    elif args.activation == 'selu':
+        activation_f = torch.nn.SELU
+    elif args.activation == 'elu':
+        activation_f = torch.nn.ELU
+    elif args.activation == 'leaky_relu':
+        activation_f = torch.nn.LeakyReLU
+    elif args.activation == 'prelu':
+        activation_f = torch.nn.PReLU
+    
+    model = MLPComplete(total_input_size, output_size, activation_f=activation_f, dropout=args.dropout)
 
     if args.env_type == '2d' or args.env_type == '3d':
         loss_f = model.loss
@@ -106,14 +127,15 @@ def main(args):
             model.encoder.cuda()
 
     if args.opt == 'Adagrad':
-        optimizer = torch.optim.Adagrad(model.parameters(), lr=args.learning_rate)
-        
+        optimizer = torch.optim.Adagrad(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     elif args.opt == 'Adam':
-        optimizer = torch.optim.Adagrad(model.parameters(), lr=args.learning_rate)
+        optimizer = torch.optim.Adam(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
     elif args.opt == 'SGD':
-        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9)
+        optimizer = torch.optim.SGD(model.parameters(), lr=args.learning_rate, momentum=0.9, weight_decay=args.weight_decay)
     elif args.opt == 'ASGD':
-        optimizer = torch.optim.ASGD(model.parameters(), lr=args.learning_rate)
+        optimizer = torch.optim.ASGD(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
+    elif args.opt == 'RMSprop':
+        optimizer = torch.optim.RMSprop(model.parameters(), lr=args.learning_rate, weight_decay=args.weight_decay)
 
     model.opt = optimizer
     
@@ -126,7 +148,7 @@ def main(args):
     # load train and test data
     print('loading...')
     obstacles, dataset, targets, env_indices = data_loader_2d(
-        N=args.N, with_start=args.with_start, samples=args.samples, get_together=True)
+        N=args.N, with_start=args.with_start, samples=args.samples, get_together=True, point_cloud=args.point_cloud)
     print('obstacles.shape', np.array(obstacles).shape, flush=True)
     print('dataset.shape', np.array(dataset).shape, flush=True)
     print('target.shape', np.array(targets).shape, flush=True)
@@ -160,6 +182,7 @@ def main(args):
     val_record_i = 0
 
     print(model)
+    print(model.opt)
     model.train()
     # print number of parameters
     total_params = sum(
@@ -335,6 +358,11 @@ parser.add_argument('--decay-rate', type=float, default=0.5)
 parser.add_argument('--opt', type=str, default='Adagrad')
 parser.add_argument('--with-start', action='store_true')
 parser.add_argument('--samples', type=int, default=10000)
+parser.add_argument('--point-cloud', action='store_true')
+parser.add_argument('--activation', type=str, default='relu')
+parser.add_argument('--dropout', type=float, default=0.5)
+parser.add_argument('--weight-decay', type=float, default=0.0001)
+
 
 args = parser.parse_args()
 print(args)

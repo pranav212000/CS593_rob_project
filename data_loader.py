@@ -4,19 +4,32 @@ import pickle
 from tqdm import tqdm
 
 
-def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = False):
+def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = False, point_cloud = True):
     print('Loading data...', flush=True)
     obs = []
-    for i in range(0,N):
 
-        temp = pickle.load(open('envs/2d/env'+str(i)+'_pc.pkl', 'rb'))
-        temp = np.array(temp)
-        temp = temp.flatten()
+    if point_cloud:
+        for i in range(0,N):
 
-        obs.append(temp)
+            temp = pickle.load(open('envs/2d/env'+str(i)+'_pc.pkl', 'rb'))
+            temp = np.array(temp)
+            temp = temp.flatten()
 
-    obs = np.array(obs)
-    obs = obs / 20.0
+            obs.append(temp)
+
+        obs = np.array(obs)
+        obs = obs / 20.0
+    else:
+        for i in range(0,N):
+
+            temp = pickle.load(open('envs/2d/env'+str(i)+'.pkl', 'rb'))
+            temp = np.array(temp)
+            temp = temp.flatten()
+
+            obs.append(temp)
+
+        obs = np.array(obs)
+        obs = obs / 20.0
 
 
 
