@@ -308,7 +308,7 @@ def main(args):
             #     print('epoch {}, batch: {}/{}, train loss {}, val loss {}'.format(epoch, i / args.batch_size, len(dataset) / args.batch_size, sum_train_loss / (i + args.batch_size), sum_val_loss / (i + args.batch_size)), flush=True)
 
         print('epoch {}/{}, train loss {}, val loss {}'.format(epoch, args.epochs,
-              sum_train_loss / len(dataset), sum_val_loss / len(dataset)), flush=True)
+              sum_train_loss * 40 / len(dataset), sum_val_loss * 40 / len(dataset)), flush=True)
 
         # scheduler.step()
 

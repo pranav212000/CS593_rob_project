@@ -37,12 +37,14 @@ class MLPComplete(nn.Module):
             nn.Linear(64, 32),
             nn.BatchNorm1d(32),
             activation_f(),
-            nn.Linear(32, output_size))
+            nn.Linear(32, output_size),
+            )
+            
 
         self.opt = None
 
     def forward(self, x):
-        out = self.fc(x)
+        out = self.fc(x)       
         return out
 
     def set_opt(self, opt, lr=1e-2, momentum=None):

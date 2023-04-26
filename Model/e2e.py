@@ -4,10 +4,10 @@ import numpy as np
 import copy
 # Auxiliary functions useful for GEM's inner optimization.
 class End2EndMPNet(nn.Module):
-    def __init__(self, total_input_size, AE_input_size, mlp_input_size, output_size, CAE, MLP):
+    def __init__(self, total_input_size, AE_input_size, mlp_input_size, output_size, CAE, MLP, activation_f=nn.ReLU, dropout=0.0):
         super(End2EndMPNet, self).__init__()
-        self.encoder = CAE.Encoder(AE_input_size)
-        self.mlp = MLP(mlp_input_size, output_size)
+        self.encoder = CAE.Encoder(AE_input_size, activation_f=activation_f, dropout=dropout)
+        self.mlp = MLP(mlp_input_size, output_size, activation_f=activation_f, dropout=dropout)
         self.mse = nn.MSELoss()
         self.opt = torch.optim.Adagrad(list(self.encoder.parameters())+list(self.mlp.parameters()))
         self.total_input_size = total_input_size
