@@ -25,7 +25,7 @@ import random
 import sys
 from collision_utils import get_collision_fn
 import datetime
-import resource
+# import resource
 
 
 UR5_JOINT_INDICES = [0, 1, 2]
@@ -72,6 +72,11 @@ class Node():
         self.conf = conf
         if(conf is not None):
             
+            print("conf", conf)
+            print("UR5_JOINT_INDICES", UR5_JOINT_INDICES)
+            print("ur5", ur5)
+            set_joint_positions(ur5, UR5_JOINT_INDICES, conf)
+            
             num_joints = p.getNumJoints(ur5)
             link_id = num_joints - 1
             link_state = p.getLinkState(ur5, link_id, computeForwardKinematics=True)
@@ -80,6 +85,8 @@ class Node():
 
         self.cost = 0.0
         self.neighbors = {}
+        self.parent = None
+        self.children = set()
 
     def add_neighbor(self, node, cost):
         self.neighbors[node] = cost
@@ -637,15 +644,15 @@ class PRM():
 def main():
 
 #   TODO following code needs to be commented out to run on windows, along with import resource
-    print(resource.getrlimit(resource.RLIMIT_STACK))
-    print(sys.getrecursionlimit())
+    # print(resource.getrlimit(resource.RLIMIT_STACK))
+    # print(sys.getrecursionlimit())
 
-    max_rec=0x100000
+    # max_rec=0x100000
 
-    # May segfault without this line. 0x100 is a guess at the size of each stack frame.
-    resource.setrlimit(resource.RLIMIT_STACK, [
-       0x100 * max_rec, resource.RLIM_INFINITY])
-    sys.setrecursionlimit(max_rec)
+    # # May segfault without this line. 0x100 is a guess at the size of each stack frame.
+    # resource.setrlimit(resource.RLIMIT_STACK, [
+    #    0x100 * max_rec, resource.RLIM_INFINITY])
+    # sys.setrecursionlimit(max_rec)
 
     
     

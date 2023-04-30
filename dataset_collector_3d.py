@@ -110,7 +110,7 @@ def main():
 
             state = np.array(path[i].state)
             dataset.append(np.array(
-                [start[0], start[1], goal[0], goal[1], state[0], state[1], cost_to_goal[i]]))
+                [start[0], start[1], start[2], goal[0], goal[1], goal[2], state[0], state[1], state[2], cost_to_goal[i]]))
 
         if iter % args.save_every == 0:
             # print('iter', iter)
