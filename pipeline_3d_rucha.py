@@ -196,7 +196,9 @@ def RRTstar(sample):
         q_rand = RRT_Node(conf)
         q_nearest = find_nearest(q_rand, tree)
 
-        if steer_to(q_rand, q_nearest):
+        valid, cost = steer_to(q_rand, q_nearest)
+
+        if valid:
             newNode = copy.deepcopy(q_rand)
             newNode.parent = q_nearest
             # newNode.cost = rnd_cost + self.nodeList[nind].cost
