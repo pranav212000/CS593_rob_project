@@ -27,57 +27,7 @@ os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 from math import sqrt
 
 
-def normalize(vector):
-    """
-    Returns the vector scaled to a length of 1
-    """
-    norm = sqrt(vector[0] ** 2 + vector[1] ** 2)
-    return vector[0] / norm, vector[1] / norm
 
-
-def edge_direction(point0, point1):
-    """
-    Returns a vector going from point0 to point1
-    """
-    return point1[0] - point0[0], point1[1] - point0[1]
-
-
-def orthogonal(vector):
-    """
-    Returns a A new vector which is orthogonal to the given vector
-    """
-    return vector[1], -vector[0]
-
-
-def vertices_to_edges(vertices):
-    """
-    Returns a list of the edges of the vertices as vectors
-    """
-    return [edge_direction(vertices[i], vertices[(i + 1) % len(vertices)])
-            for i in range(len(vertices))]
-
-
-def project(vertices, axis):
-    """
-    Returns a vector showing how much of the vertices lies along the axis
-    """
-    dots = [vertex[0] * axis[0] + vertex[1] * axis[1] for vertex in vertices]
-    return [min(dots), max(dots)]
-
-
-
-def separating_axis_theorem(vertices_a, vertices_b):
-    edges = vertices_to_edges(vertices_a) + vertices_to_edges(vertices_b)
-    axes = [normalize(orthogonal(edge)) for edge in edges]
-
-    for axis in axes:
-        projection1 = project(vertices_a, axis)
-        projection2 = project(vertices_b, axis)
-
-        if not (min(projection1) <= max(projection2) and  min(projection2) <= max(projection1)):
-            return False
-
-    return True
 
 def diff(v1, v2):
     """
@@ -167,15 +117,15 @@ class RRT():
         firstTime = time.time()
         
         if not self.__CollisionCheck(self.end) or not self.__CollisionCheck(self.start):
-            return None, firstTime, min_time
+            return [], firstTime, min_time
 
         self.nodeList = [self.start]
         point_cloud = self.pointcloud
         min_cost = float('inf')
         
         for i in range(self.maxIter):
-            if i == self.maxIter - 1 and self.goalfound == False:
-                self.maxIter += 10
+            # if i == self.maxIter - 1 and self.goalfound == False:
+            #     self.maxIter += 10
 
             rnd = self.generatesample(point_cloud=point_cloud, model=model)
             nind = self.GetNearestListIndex(self.nodeList, rnd)
@@ -944,7 +894,9 @@ def main():
             d_time = 0
             n_count = 0
             n_time = 0
-            for _ in tqdm(range(100)):
+            d_path_length = 0
+            n_path_length = 0
+            for it in tqdm(range(1, 10000)):
                 env_id = random.randint(0, 9)
                 env_path = 'envs/2d/env{}.pkl'.format(env_id)
 
@@ -966,6 +918,7 @@ def main():
                 
                 rrt2 = RRT(start=start, goal=goal, randArea=[-20, 20], pointcloud = pc, obstacleList=obstacleList, dof=dof, alg=args.alg, geom=args.geom, maxIter=args.iter, sample='normal' if args.sample == 'directed' else 'directed')
                 
+
                 starttime = time.time()
                 path, firsttime, minTime = rrt.planning1(animation=False, model=model)
                 endtime = time.time()
@@ -974,23 +927,35 @@ def main():
                 endtime2 = time.time()
 
                 if path is not None:
+                    if len(path) == 0:
+                        it -= 1
+                        continue
+
+
+                if path is not None:
                     d_count += 1
                     d_time += minTime2 - starttime2
-                if path2 is not None:
+                    d_path_length += len(path)
+                if path2 is not None and len(path) != 0:
                     n_count += 1
                     n_time += minTime - starttime
+                    n_path_length += len(path2)
 
+                if it % 20 == 0 and it != 0:
+                    print('directed success rate: ', d_count/it, flush=True)
+                    print('directed average time: ', d_time/d_count, flush=True)
+                    print('directed average path length: ', d_path_length/d_count, flush=True)
+                    print('normal success rate: ', n_count/it, flush=True)
+                    print('normal average time: ', n_time/n_count, flush=True)
+                    print('normal average path length: ', n_path_length/n_count, flush=True)
+                    
+                    
             print('directed success rate: ', d_count/100)
             print('directed average time: ', d_time/d_count)
+            print('directed average path length: ', d_path_length/d_count)
             print('normal success rate: ', n_count/100)
             print('normal average time: ', n_time/n_count)
-
-
-
-
-
-
-
+            print('normal average path length: ', n_path_length/n_count)
 
 
 

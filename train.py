@@ -41,6 +41,7 @@ def main(args):
         torch.cuda.set_device(args.device)
     # decide dataloader, MLP, AE based on env_type
     if args.env_type == '2d':
+        AE_output_size = 28
         if args.with_start:
             total_input_size = 2800+6
             AE_input_size = 2800
@@ -64,11 +65,34 @@ def main(args):
         MLP = mlp.MLP
         # mpc = MLPComplete
     elif args.env_type == '3d':
-        total_input_size = 6000 + 6
-        AE_input_size = 6000
-        mlp_input_size = 28+6
+        
+        AE_output_size = 21
+        
         output_size = 3
         # load_train_dataset = data_loader_2d
+        CAE = CAE_2d
+        MLP = mlp.MLP
+        if args.with_start:
+            total_input_size = 1400 * 3 + 9
+            AE_input_size = 1400 * 3
+            AE_output_size = 21
+            mlp_input_size = 21 + 9
+        else:
+            total_input_size = 1400 * 3 + 6
+            AE_input_size = 1400 * 3
+            mlp_input_size = 21 + 6
+            AE_output_size = 21
+
+        if not args.point_cloud:
+            total_input_size -= 1400 * 3 - 21
+            AE_input_size -= 1400 * 3 - 21
+            
+
+
+
+        output_size = 1
+        load_train_dataset = data_loader_2d
+
         CAE = CAE_2d
         MLP = mlp.MLP
 
@@ -88,7 +112,7 @@ def main(args):
 
         
     model = End2EndMPNet(total_input_size, AE_input_size, mlp_input_size,
-                         output_size, CAE, MLP, activation_f=activation_f, dropout=args.dropout)
+                         output_size, CAE, MLP, activation_f=activation_f, dropout=args.dropout, AE_output_size=AE_output_size)
     
 
     if args.env_type == '2d' or args.env_type == '3d':
@@ -149,7 +173,10 @@ def main(args):
     # load train and test data
     print('loading...')
     obstacles, dataset, targets, env_indices = data_loader_2d(
-        N=args.N, with_start=args.with_start, samples=args.samples, get_together=False, point_cloud=args.point_cloud)
+        N=args.N, with_start=args.with_start, samples=args.samples, 
+        get_together=False, point_cloud=args.point_cloud, env_type=args.env_type)
+
+
     print('obstacles.shape', np.array(obstacles).shape, flush=True)
     print('dataset.shape', np.array(dataset).shape, flush=True)
     print('target.shape', np.array(targets).shape, flush=True)
@@ -246,6 +273,8 @@ def main(args):
             # print('batch_obstacles.shape', batch_obstacles.shape)
 
             model.zero_grad()
+            # print('batch_data.shape', batch_data.shape)
+            # print('batch_obstacles.shape', batch_obstacles.shape)
             loss = loss_f(model(batch_data, batch_obstacles), batch_target)
             loss.backward()
             loss = loss.item()

@@ -72,6 +72,9 @@ class Node():
         self.conf = conf
         if(conf is not None):
             
+
+            set_joint_positions(ur5, UR5_JOINT_INDICES, conf)
+            
             num_joints = p.getNumJoints(ur5)
             link_id = num_joints - 1
             link_state = p.getLinkState(ur5, link_id, computeForwardKinematics=True)
@@ -80,6 +83,8 @@ class Node():
 
         self.cost = 0.0
         self.neighbors = {}
+        self.parent = None
+        self.children = set()
 
     def add_neighbor(self, node, cost):
         self.neighbors[node] = cost
