@@ -91,8 +91,8 @@ class RRT():
             self.start = Node(start)
             self.end = Node(goal)
         else:
-            self.start = Node(conf=start)
-            self.end = Node(conf=goal)
+            self.start = Node(conf=start, ur5=ur5)
+            self.end = Node(conf=goal, ur5=ur5)
         self.obstacleList = obstacleList
         self.minrand = randArea[0]
         self.maxrand = randArea[1]
@@ -246,12 +246,11 @@ class RRT():
         min_time = time.time()
         firstTime = time.time()
 
-        if self.collisionCheck3d(self.start) or self.collisionCheck3d(self.end):
-            return [], firstTime, min_time
-
-
-        if not self.__CollisionCheck(self.end) or not self.__CollisionCheck(self.start):
-            return [], firstTime, min_time
+        if self.env == '3d':
+            print(self.start)
+            print(self.end)
+            if self.collisionCheck3d(self.start.conf) or self.collisionCheck3d(self.end.conf):
+                return [], firstTime, min_time
 
         self.nodeList = [self.start]
         point_cloud = self.pointcloud
@@ -287,8 +286,9 @@ class RRT():
                 # insert newNode into the tree
                 if newParent is not None:
                     newNode.parent = newParent
-                    newNode.cost = dist(
-                        newNode.state, self.nodeList[newParent].state) + self.nodeList[newParent].cost
+                    newNode.cost = self.getDistance(newNode, self.nodeList[newParent]) + self.nodeList[newParent].cost
+                    # newNode.cost = dist(
+                    #     newNode.state, self.nodeList[newParent].conf) + self.nodeList[newParent].cost
                 else:
                     pass  # nind is already set as newNode's parent
                 self.nodeList.append(newNode)
@@ -654,7 +654,7 @@ class RRT():
         return False
 
     @staticmethod
-    def get_path_len(path):
+    def get_path_len(path, env='2d'):
         """
         path: a list of coordinates
 
@@ -662,7 +662,12 @@ class RRT():
         """
         pathLen = 0
         for i in range(1, len(path)):
-            pathLen += dist(path[i], path[i-1])
+            if env == '2d':
+                pathLen += dist(path[i], path[i-1])
+            elif env == '3d':
+                pass
+            # TODO use the distance function for 3d
+            
 
         return pathLen
 
@@ -880,6 +885,9 @@ class RRT():
 
         You will need to modify this for question 2 (if self.geom == 'circle') and question 3 (if self.geom == 'rectangle')
         """
+
+        if self.env == '3d':
+            return
         plt.clf()
         # for stopping simulation with the esc key.
         # plt.gcf().canvas.mpl_connect(
@@ -1014,7 +1022,7 @@ def main():
                         help='set to disable all graphs. Useful for running in a headless session')
     parser.add_argument('--fast', action='store_true',
                         help='set to disable live animation. (the final results will still be shown in a graph). Useful for doing timing analysis')
-    parser.add_argument('--env', default=1, type=int)
+    parser.add_argument('--env-id', default=1, type=int)
     parser.add_argument('--env-type', default='2d', type=str)
     parser.add_argument('--nn', action='store_true')
     parser.add_argument('--sample', default='directed',
@@ -1032,13 +1040,13 @@ def main():
           (args.alg, args.geom))
     starttime = time.time()
 
-    env_path = 'envs/{}/env{}.pkl'.format(args.env_type, args.env)
+    env_path = 'envs/{}/env{}.pkl'.format(args.env_type, args.env_id)
 
     obstacleList = []
     env = pickle.load(open(env_path, 'rb'))
     obstacleList = env
 
-    env_pc_path = 'envs/{}/env{}_pc.pkl'.format(args.env_type, args.env)
+    env_pc_path = 'envs/{}/env{}_pc.pkl'.format(args.env_type, args.env_id)
 
     pc = pickle.load(open(env_pc_path, 'rb'))
 
@@ -1092,7 +1100,7 @@ def main():
                                         disabled_collisions=set())
 
     rrt = RRT(start=start, goal=goal, randArea=[-20, 20], pointcloud=pc, obstacleList=obstacleList,
-              dof=dof, alg=args.alg, geom=args.geom, maxIter=args.iter, sample=args.sample, env=args.env_type, ur5=ur5)
+              dof=dof, alg=args.alg, geom=args.geom, maxIter=args.iter, sample=args.sample, env=args.env_type, ur5=ur5, collisionCheck3d=collisionCheck3d)
 
     total_input_size = 2806
     output_size = 1
@@ -1111,7 +1119,7 @@ def main():
 
     # model.load('entire_model_env_2d_epoch_15000_pc.pt')
     model = torch.load(
-        'models/29_030129/entire_model_env_3d_epoch_2800.pt', map_location='cpu')
+        'entire_model_env_3d_epoch_2850.pt', map_location='cpu')
     model.eval()
 
     starttime = time.time()
@@ -1132,8 +1140,8 @@ def main():
         print("First time: ", firsttime - starttime)
         print("Min time: ", minTime - starttime)
 
-    print('Sample Type: ', 'normal' if args.sample == 'directed' else 'directed')
-    print("Time taken: ", endtime2 - starttime2)
+    # print('Sample Type: ', 'normal' if args.sample == 'directed' else 'directed')
+    # print("Time taken: ", endtime2 - starttime2)
 
     if not args.blind:
 
