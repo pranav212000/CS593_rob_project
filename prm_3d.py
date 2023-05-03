@@ -72,9 +72,9 @@ class Node():
         self.conf = conf
         if(conf is not None):
             
-            print("conf", conf)
-            print("UR5_JOINT_INDICES", UR5_JOINT_INDICES)
-            print("ur5", ur5)
+            # print("conf", conf)
+            # print("UR5_JOINT_INDICES", UR5_JOINT_INDICES)
+            # print("ur5", ur5)
             set_joint_positions(ur5, UR5_JOINT_INDICES, conf)
             
             num_joints = p.getNumJoints(ur5)

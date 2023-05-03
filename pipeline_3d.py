@@ -111,80 +111,16 @@ class RRT():
         self.goalSampleRate = goalSampleRate
         self.maxIter = maxIter
 
-        self.cost_to_go[tuple(self.end.state)] = 0
-        self.cost_to_go[tuple(self.start.state)] = 1000000
+        self.cost_to_go[tuple(self.end.conf)] = 0
+        self.cost_to_go[tuple(self.start.conf)] = 1000000
 
         self.goalfound = False
         self.solutionSet = set()
 
-    def collisionCheck(self, node):
-        """
-        Check if the node is in collision.
-        """
-
-        if (self.env == '3d'):
-            return self.collisionCheck3d(node.conf)
-
-        s = np.zeros(self.dof, dtype=np.float32)
-        s[0] = node.state[0]
-        s[1] = node.state[1]
-        cx = node.state[0]
-        cy = node.state[1]
-        rx = s[0]
-        ry = s[1]
-
-        for (ox, oy, sizex, sizey) in self.obstacleList:
-            obs = [ox+sizex/2.0, oy+sizey/2.0]
-            obs_size = [sizex, sizey]
-            cf = False
-            for j in range(self.dof):
-                if abs(obs[j] - s[j]) > obs_size[j]/2.0:
-                    cf = True
-                    break
-            if cf == False:
-                return False
-
-        return True  # safe'''
-
-    def generateSample(self, iter=100):
-        """
-        Randomly generates a sample, to be used as a new node.
-        This sample may be invalid - if so, call generatesample() again.
-
-
-        You will need to modify this function for question 3 (if self.geom == 'rectangle')
-
-        returns: random c-space vector
-        """
-
-        if (self.env == '2d'):
-
-            while (iter > 0):
-
-                sample = []
-                for j in range(0, self.dof):
-                    sample.append(random.uniform(self.minRand, self.maxRand))
-
-                rnd = Node(sample)
-                if self.collisionCheck(rnd):
-                    return rnd
-                else:
-                    iter = iter - 1
-
-        else:
-            rand_state = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *
-                          math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
-            set_joint_positions(self.ur5, UR5_JOINT_INDICES, rand_state)
-            while (self.collisionCheck3d(rand_state)):
-                rand_state = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *
-                              math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
-
-            return Node(conf=rand_state, ur5=self.ur5)
-
-    def getDistance(self, node1: Node, node2: Node):
-        if (self.env == '3d'):
-            return np.linalg.norm(np.array(node1.conf) - np.array(node2.conf))
-        return np.linalg.norm(np.array(node1.state) - np.array(node2.state))
+    
+    def getDistance(self, node1: Node, node2: Node):        
+        return np.linalg.norm(np.array(node1.conf) - np.array(node2.conf))
+  
 
     def getNearNodes(self, newNode: Node, radius: float, k: int):
 
@@ -198,9 +134,20 @@ class RRT():
                 nearNodes.append(i)
 
         return nearNodes
+    def getEndEffectorPos(self):
+        num_joints = p.getNumJoints(self.ur5)
+        link_id = num_joints - 1
+        link_state = p.getLinkState(
+            self.ur5, link_id, computeForwardKinematics=True)
+        link_pos = link_state[0]
+        link_ori = link_state[1]
 
-    def steerTo3d(self, rand_node, nearest_node, step_size=0.05, show_animation=False):
+        return link_pos
 
+
+    def steerTo3d(self, rand_node, nearest_node, step_size=0.05, show_animation=True):
+        
+        
         distance = self.getDistance(rand_node, nearest_node)
         n_steps = round(distance/step_size)
         if n_steps == 0:
@@ -223,19 +170,19 @@ class RRT():
 
         if show_animation:
             if len(link_pos) > 10:
-                link_pos = link_pos[::len(link_pos)//10]
+                link_pos = link_pos[::len(link_pos)//2]
 
             link_pos.insert(0, start_pos)
             link_pos.append(end_pos)
 
             # print(len(link_pos))
 
-            # for i in range(len(link_pos)-1):
-            #     p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
+            for i in range(len(link_pos)-1):
+                p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
 
         return (True, distance)
 
-    def planning3d(self, animation=False, model=None):
+    def planning3d(self, show_animation=False, model=None):
         """
         Implements the RTT (or RTT*) algorithm, following the pseudocode in the handout.
         You should read and understand this function, but you don't have to change any of its code - just implement the 3 helper functions.
@@ -257,13 +204,16 @@ class RRT():
         min_cost = float('inf')
 
         for i in range(self.maxIter):
-            # if i == self.maxIter - 1 and self.goalfound == False:
-            #     self.maxIter += 10
+            if i% 10 == 0:
+                print(i)
 
             rnd = self.generatesample(point_cloud=point_cloud, model=model)
             nind = self.GetNearestListIndex(self.nodeList, rnd)
 
-            rnd_valid, rnd_cost = self.steerTo(rnd, self.nodeList[nind])
+            # print(rnd.conf)
+            # print(self.nodeList[nind].conf)
+            rnd_valid, rnd_cost = self.steerTo3d(rnd, self.nodeList[nind], show_animation=show_animation)
+            
 
             if (rnd_valid):
                 newNode = copy.deepcopy(rnd)
@@ -307,145 +257,13 @@ class RRT():
                     if cost < min_cost:
                         min_time = time.time()
 
-                if animation:
+                # if animation:
 
-                    self.draw_graph(rnd.state)
-
-        return self.get_path_to_goal(), firstTime, min_time
-
-    def planning1(self, animation=False, model=None):
-        """
-        Implements the RTT (or RTT*) algorithm, following the pseudocode in the handout.
-        You should read and understand this function, but you don't have to change any of its code - just implement the 3 helper functions.
-
-        animation: flag for animation on or off
-        """
-
-        min_time = time.time()
-        firstTime = time.time()
-
-        if not self.__CollisionCheck(self.end) or not self.__CollisionCheck(self.start):
-            return [], firstTime, min_time
-
-        self.nodeList = [self.start]
-        point_cloud = self.pointcloud
-        min_cost = float('inf')
-
-        for i in range(self.maxIter):
-            # if i == self.maxIter - 1 and self.goalfound == False:
-            #     self.maxIter += 10
-
-            rnd = self.generatesample(point_cloud=point_cloud, model=model)
-            nind = self.GetNearestListIndex(self.nodeList, rnd)
-
-            rnd_valid, rnd_cost = self.steerTo(rnd, self.nodeList[nind])
-
-            if (rnd_valid):
-                newNode = copy.deepcopy(rnd)
-                newNode.parent = nind
-                newNode.cost = rnd_cost + self.nodeList[nind].cost
-
-                if self.alg == 'rrtstar':
-                    # you'll implement this method
-                    nearinds = self.find_near_nodes(newNode)
-                    # to_add = self.to_be_added(newNode, nearinds, point_cloud)
-                    # you'll implement this method
-                    newParent = self.choose_parent(newNode, nearinds)
-                    # if to_add == True:
-                    #     newParent = self.choose_parent(newNode, nearinds) # you'll implement this method
-                    # else:
-                    #     continue
-                else:
-                    newParent = None
-
-                # insert newNode into the tree
-                if newParent is not None:
-                    newNode.parent = newParent
-                    newNode.cost = dist(
-                        newNode.state, self.nodeList[newParent].state) + self.nodeList[newParent].cost
-                else:
-                    pass  # nind is already set as newNode's parent
-                self.nodeList.append(newNode)
-                newNodeIndex = len(self.nodeList) - 1
-                self.nodeList[newNode.parent].children.add(newNodeIndex)
-
-                if self.alg == 'rrtstar' and self.sample == 'normal':
-                    # you'll implement this method
-                    self.rewire(newNode, newNodeIndex, nearinds)
-
-                if self.is_near_goal(newNode):
-                    self.solutionSet.add(newNodeIndex)
-                    self.goalfound = True
-                    firstTime = time.time()
-                    cost = self.get_path_len(self.get_path_to_goal())
-                    if cost < min_cost:
-                        min_time = time.time()
-
-                if animation:
-
-                    self.draw_graph(rnd.state)
+                #     self.draw_graph(rnd.state)
 
         return self.get_path_to_goal(), firstTime, min_time
 
-    def planning(self, animation=False, model=None):
-        """
-        Implements the RTT (or RTT*) algorithm, following the pseudocode in the handout.
-        You should read and understand this function, but you don't have to change any of its code - just implement the 3 helper functions.
-
-        animation: flag for animation on or off
-        """
-
-        if not self.__CollisionCheck(self.end):
-            return None
-
-        self.nodeList = [self.start]
-        point_cloud = self.pointcloud
-        for i in range(self.maxIter):
-            rnd = self.generatesample()
-            nind = self.GetNearestListIndex(self.nodeList, rnd)
-
-            rnd_valid, rnd_cost = self.steerTo(rnd, self.nodeList[nind])
-
-            if (rnd_valid):
-                newNode = copy.deepcopy(rnd)
-                newNode.parent = nind
-                newNode.cost = rnd_cost + self.nodeList[nind].cost
-
-                if self.alg == 'rrtstar':
-                    # you'll implement this method
-                    nearinds = self.find_near_nodes(newNode)
-                    to_add = self.to_be_added(
-                        newNode, nearinds, point_cloud, model)
-                    if to_add == True:
-                        # you'll implement this method
-                        newParent = self.choose_parent(newNode, nearinds)
-                    else:
-                        continue
-                else:
-                    newParent = None
-
-                if newParent is not None:
-                    newNode.parent = newParent
-                    newNode.cost = dist(
-                        newNode.state, self.nodeList[newParent].state) + self.nodeList[newParent].cost
-                else:
-                    pass  # nind is already set as newNode's parent
-                self.nodeList.append(newNode)
-                newNodeIndex = len(self.nodeList) - 1
-                self.nodeList[newNode.parent].children.add(newNodeIndex)
-
-                # if self.alg == 'rrtstar':
-                #     self.rewire(newNode, newNodeIndex, nearinds) # you'll implement this method
-
-                if self.is_near_goal(newNode):
-                    self.solutionSet.add(newNodeIndex)
-                    self.goalfound = True
-
-                if animation:
-                    self.draw_graph(rnd.state)
-
-        return self.get_path_to_goal()
-
+   
     def choose_parent(self, newNode, nearinds):
         """
         Selects the best parent for newNode. This should be the one that results in newNode having the lowest possible cost.
@@ -462,7 +280,7 @@ class RRT():
         minCost = float('inf')
         minIndex = None
         for i in nearinds:
-            valid, cost = self.steerTo(newNode, self.nodeList[i])
+            valid, cost = self.steerTo3d(newNode, self.nodeList[i])
             if valid:
                 # find cost of reaching to i from source
                 cost += self.nodeList[i].cost
@@ -472,60 +290,7 @@ class RRT():
 
         return minIndex
 
-    def steerTo(self, dest, source):
-        """
-        Charts a route from source to dest, and checks whether the route is collision-free.
-        Discretizes the route into small steps, and checks for a collision at each step.
-
-        This function is used in planning() to filter out invalid random samples. You may also find it useful
-        for implementing the functions in question 1.
-
-        dest: destination node
-        source: source node
-
-        returns: (success, cost) tuple
-            - success is True if the route is collision free; False otherwise.
-            - cost is the distance from source to dest, if the route is collision free; or None otherwise.
-        """
-
-        newNode = copy.deepcopy(source)
-
-        DISCRETIZATION_STEP = self.expandDis
-
-        dists = np.zeros(self.dof, dtype=np.float32)
-        for j in range(0, self.dof):
-            dists[j] = dest.state[j] - source.state[j]
-
-        distTotal = magnitude(dists)
-
-        if distTotal > 0:
-            incrementTotal = distTotal/DISCRETIZATION_STEP
-            for j in range(0, self.dof):
-                dists[j] = dists[j]/incrementTotal
-
-            numSegments = int(math.floor(incrementTotal))+1
-
-            stateCurr = np.zeros(self.dof, dtype=np.float32)
-            for j in range(0, self.dof):
-                stateCurr[j] = newNode.state[j]
-
-            stateCurr = Node(stateCurr)
-
-            for i in range(0, numSegments):
-
-                if not self.__CollisionCheck(stateCurr):
-                    return (False, None)
-
-                for j in range(0, self.dof):
-                    stateCurr.state[j] += dists[j]
-
-            if not self.__CollisionCheck(dest):
-                return (False, None)
-
-            return (True, distTotal)
-        else:
-            return (False, None)
-
+    
     def generatesample(self, model=None, point_cloud=None):
         """
         Randomly generates a sample, to be used as a new node.
@@ -540,7 +305,7 @@ class RRT():
             cost_to_go = float('inf')
             # env_data = point_cloud
             # env_data = np.append(env_data, self.end.state)
-            env_data = self.end.state
+            env_data = self.end.conf
             point_cloud = np.array(point_cloud).astype(np.float32)
             point_cloud = point_cloud.flatten()
             point_cloud = point_cloud / 20.0
@@ -584,37 +349,27 @@ class RRT():
                                                                                            math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
 
                         set_joint_positions(self.ur5, UR5_JOINT_INDICES, rnd)
+                        rnd = Node(conf=rnd, ur5=self.ur5)
 
-                        if not self.collisionCheck3d(rnd):
+                        if not self.collisionCheck3d(rnd.conf):
                             break
 
-                        rnd = Node(conf=rnd, ur5=self.ur5)
+                        
 
                 if self.sample == 'normal':
                     break
 
-                if self.env == '2d':
+                
+                
+                near_nodes = self.getNearNodes(rnd)
+                for node in near_nodes:
+                    near_cost = self.cost_to_go[tuple(
+                        self.nodeList[node].conf)]
+                    # model(torch.FloatTensor(np.append(env_data, self.nodeList[node].state).reshape(1, -1)/20.0), point_cloud) * 20.0
+                    if near_cost < min_near_neighbor_cost:
+                        min_near_neighbor_cost = near_cost
 
-                    near_nodes = self.find_near_nodes(rnd)
-                    for node in near_nodes:
-                        near_cost = self.cost_to_go[tuple(
-                            self.nodeList[node].state)]
-                        # model(torch.FloatTensor(np.append(env_data, self.nodeList[node].state).reshape(1, -1)/20.0), point_cloud) * 20.0
-                        if near_cost < min_near_neighbor_cost:
-                            min_near_neighbor_cost = near_cost
-
-                    node_input = np.append(env_data, rnd.state)
-
-                elif self.env == '3d':
-                    near_nodes = self.getNearNodes(rnd)
-                    for node in near_nodes:
-                        near_cost = self.cost_to_go[tuple(
-                            self.nodeList[node].conf)]
-                        # model(torch.FloatTensor(np.append(env_data, self.nodeList[node].state).reshape(1, -1)/20.0), point_cloud) * 20.0
-                        if near_cost < min_near_neighbor_cost:
-                            min_near_neighbor_cost = near_cost
-
-                    node_input = np.append(env_data, rnd.conf)
+                node_input = np.append(env_data, rnd.conf)
 
                 node_input = node_input.flatten()
                 data = np.array(node_input).astype(np.float32)
@@ -627,10 +382,8 @@ class RRT():
 
                 cost_to_go = model(data, point_cloud) * 20.0
 
-                if self.env == '2d':
-                    self.cost_to_go[tuple(rnd.state)] = cost_to_go
-                elif self.env == '3d':
-                    self.cost_to_go[tuple(rnd.conf)] = cost_to_go
+                
+                self.cost_to_go[tuple(rnd.conf)] = cost_to_go
 
                 if prob_to_rand < 0 or len(near_nodes) == 0:
                     break
@@ -640,6 +393,10 @@ class RRT():
         else:
             rnd = self.end
 
+        # print(rnd)
+        draw_sphere_marker(position=rnd.state, radius=0.005, color=[1, 1, 0, 1])
+
+
         return rnd
 
     def is_near_goal(self, node):
@@ -648,7 +405,7 @@ class RRT():
 
         Returns: True if node is within 5 units of the goal state; False otherwise
         """
-        d = dist(node.state, self.end.state)
+        d = dist(node.conf, self.end.conf)
         if d < 5.0:
             return True
         return False
@@ -665,8 +422,8 @@ class RRT():
             if env == '2d':
                 pathLen += dist(path[i], path[i-1])
             elif env == '3d':
-                pass
-            # TODO use the distance function for 3d
+                pathLen += dist(path[i], path[i-1])
+            
             
 
         return pathLen
@@ -679,12 +436,12 @@ class RRT():
 
         Returns: a list of coordinates, representing the path backwards. Traverse this list in reverse order to follow the path from start to end
         """
-        path = [self.end.state]
+        path = [self.end.conf]
         while self.nodeList[goalind].parent is not None:
             node = self.nodeList[goalind]
-            path.append(node.state)
+            path.append(node.conf)
             goalind = node.parent
-        path.append(self.start.state)
+        path.append(self.start.conf)
         return path
 
     def find_near_nodes(self, newNode):
@@ -706,7 +463,7 @@ class RRT():
 
         nearinds = []
         for i in range(0, n_nodes):
-            if dist(self.nodeList[i].state, newNode.state) < radius:
+            if dist(self.nodeList[i].conf, newNode.conf) < radius:
                 nearinds.append(i)
         return nearinds
 
@@ -721,8 +478,8 @@ class RRT():
         # print(point_cloud)
         # print(newNode.state)
         node_input = point_cloud
-        node_input = np.append(node_input, self.end.state)
-        node_input = np.append(node_input, newNode.state)
+        node_input = np.append(node_input, self.end.conf)
+        node_input = np.append(node_input, newNode.conf)
 
         node_input = node_input.flatten()
         data = np.array(node_input).astype(np.float32)
@@ -742,8 +499,8 @@ class RRT():
         for i in nearinds:
             node = self.nodeList[i]
             node_input = point_cloud
-            node_input = np.append(node_input, node.state)
-            node_input = np.append(node_input, self.end.state)
+            node_input = np.append(node_input, node.conf)
+            node_input = np.append(node_input, self.end.conf)
             node_input = node_input.flatten()
             data = np.array(node_input).astype(np.float32)
             data = torch.FloatTensor(data)
@@ -771,7 +528,7 @@ class RRT():
         # your code here
         for i in nearinds:
             node = self.nodeList[i]
-            valid, cost = self.steerTo(node, newNode)
+            valid, cost = self.steerTo3d(node, newNode)
             if valid:
                 newCost = newNode.cost + cost
                 if newCost < node.cost:
@@ -786,7 +543,7 @@ class RRT():
         children = node.children
         for child in children:
             self.nodeList[child].cost = node.cost + \
-                dist(self.nodeList[child].state, node.state)
+                dist(self.nodeList[child].conf, node.conf)
             # update cost of all children of child
             self.updateCost(self.nodeList[child])
 
@@ -801,64 +558,13 @@ class RRT():
         """
         dlist = []
         for node in nodeList:
-            dlist.append(dist(rnd.state, node.state))
+            dlist.append(dist(rnd.conf, node.conf))
 
         minind = dlist.index(min(dlist))
 
         return minind
 
-    def __CollisionCheck(self, node):
-        """
-        Checks whether a given configuration is valid. (collides with obstacles)
-
-        You will need to modify this for question 2 (if self.geom == 'circle') and question 3 (if self.geom == 'rectangle')
-        """
-
-        if self.geom == 'circle':
-            s = np.zeros(2, dtype=np.float32)
-            s[0] = node.state[0]
-            s[1] = node.state[1]
-
-            for (ox, oy, sizex, sizey) in self.obstacleList:
-                testX = s[0]
-                testY = s[1]
-                if s[0] < ox:
-                    testX = ox
-                elif s[0] > ox+sizex:
-                    testX = ox+sizex
-                if s[1] < oy:
-                    testY = oy
-                elif s[1] > oy+sizey:
-                    testY = oy+sizey
-
-                distX = s[0]-testX
-                distY = s[1]-testY
-                distance = math.sqrt((distX*distX) + (distY*distY))
-
-                if distance <= 1:
-                    return False
-
-            return True
-
-        if self.geom == 'point':
-
-            s = np.zeros(2, dtype=np.float32)
-            s[0] = node.state[0]
-            s[1] = node.state[1]
-
-            for (ox, oy, sizex, sizey) in self.obstacleList:
-                obs = [ox+sizex/2.0, oy+sizey/2.0]
-                obs_size = [sizex, sizey]
-                cf = False
-                for j in range(self.dof):
-                    if abs(obs[j] - s[j]) > obs_size[j]/2.0:
-                        cf = True
-                        break
-                if cf == False:
-                    return False
-
-            return True  # safe'''
-
+    
     def get_path_to_goal(self):
         """
         Traverses the tree to chart a path between the start state and the goal state.
@@ -871,7 +577,7 @@ class RRT():
             mincost = float('inf')
             for idx in self.solutionSet:
                 cost = self.nodeList[idx].cost + \
-                    dist(self.nodeList[idx].state, self.end.state)
+                    dist(self.nodeList[idx].conf, self.end.conf)
                 if goalind is None or cost < mincost:
                     goalind = idx
                     mincost = cost
@@ -879,125 +585,7 @@ class RRT():
         else:
             return None
 
-    def draw_graph(self, rnd=None):
-        """
-        Draws the state space, with the tree, obstacles, and shortest path (if found). Useful for visualization.
-
-        You will need to modify this for question 2 (if self.geom == 'circle') and question 3 (if self.geom == 'rectangle')
-        """
-
-        if self.env == '3d':
-            return
-        plt.clf()
-        # for stopping simulation with the esc key.
-        # plt.gcf().canvas.mpl_connect(
-        #     'key_release_event',
-        #     lambda event: [exit(0) if event.key == 'escape' else None])
-
-        for (ox, oy, sizex, sizey) in self.obstacleList:
-            rect = mpatches.Rectangle(
-                (ox, oy), sizex, sizey, fill=True, color="purple", linewidth=0.1)
-            plt.gca().add_patch(rect)
-
-        for node in self.nodeList:
-            if node.parent is not None:
-                if node.state is not None:
-                    if self.geom == 'circle':
-                        circle = plt.Circle(
-                            (node.state[0], node.state[1]), 1, color='g', fill=False)
-                        plt.gca().add_patch(circle)
-                    if self.geom == 'rectangle':
-                        x = node.state[0]
-                        y = node.state[1]
-                        theta = node.state[2]
-
-                        # top right corner
-                        tr = np.zeros(2, dtype=np.float32)
-                        tr[0] = x + 0.75*math.cos(theta) + 1.5*math.sin(theta)
-                        tr[1] = y + 0.75*math.sin(theta) - 1.5*math.cos(theta)
-
-                        # top left corner
-                        tl = np.zeros(2, dtype=np.float32)
-                        tl[0] = x - 0.75*math.cos(theta) + 1.5*math.sin(theta)
-
-                        tl[1] = y - 0.75*math.sin(theta) - 1.5*math.cos(theta)
-
-                        # bottom right corner
-                        br = np.zeros(2, dtype=np.float32)
-                        br[0] = x + 0.75*math.cos(theta) - 1.5*math.sin(theta)
-                        br[1] = y + 0.75*math.sin(theta) + 1.5*math.cos(theta)
-
-                        # bottom left corner
-                        bl = np.zeros(2, dtype=np.float32)
-                        bl[0] = x - 0.75*math.cos(theta) - 1.5*math.sin(theta)
-                        bl[1] = y - 0.75*math.sin(theta) + 1.5*math.cos(theta)
-
-                        plt.plot([tl[0], tr[0]], [tl[1], tr[1]], color='g')
-                        plt.plot([tr[0], br[0]], [tr[1], br[1]], color='g')
-                        plt.plot([br[0], bl[0]], [br[1], bl[1]], color='g')
-                        plt.plot([bl[0], tl[0]], [bl[1], tl[1]], color='g')
-
-                        plt.plot([node.state[0], self.nodeList[node.parent].state[0]], [
-                            node.state[1], self.nodeList[node.parent].state[1]], "-g")
-
-                    plt.plot([node.state[0], self.nodeList[node.parent].state[0]], [
-                             node.state[1], self.nodeList[node.parent].state[1]], "-g")
-
-        if self.goalfound:
-            path = self.get_path_to_goal()
-            x = [p[0] for p in path]
-            y = [p[1] for p in path]
-            plt.plot(x, y, '-r')
-            # if geometry is circle
-            if self.geom == 'circle':
-                for p in path:
-                    circle = plt.Circle((p[0], p[1]), 1, color='r', fill=False)
-                    plt.gca().add_patch(circle)
-
-            # if geometry is rectangle
-            if self.geom == 'rectangle':
-                for p in path:
-                    x = p[0]
-                    y = p[1]
-                    theta = p[2]
-
-                    # top right corner
-                    tr = np.zeros(2, dtype=np.float32)
-                    tr[0] = x + 0.75*math.cos(theta) + 1.5*math.sin(theta)
-                    tr[1] = y + 0.75*math.sin(theta) - 1.5*math.cos(theta)
-
-                    # top left corner
-                    tl = np.zeros(2, dtype=np.float32)
-                    tl[0] = x - 0.75*math.cos(theta) + 1.5*math.sin(theta)
-
-                    tl[1] = y - 0.75*math.sin(theta) - 1.5*math.cos(theta)
-
-                    # bottom right corner
-                    br = np.zeros(2, dtype=np.float32)
-                    br[0] = x + 0.75*math.cos(theta) - 1.5*math.sin(theta)
-                    br[1] = y + 0.75*math.sin(theta) + 1.5*math.cos(theta)
-
-                    # bottom left corner
-                    bl = np.zeros(2, dtype=np.float32)
-                    bl[0] = x - 0.75*math.cos(theta) - 1.5*math.sin(theta)
-                    bl[1] = y - 0.75*math.sin(theta) + 1.5*math.cos(theta)
-
-                    plt.plot([tl[0], tr[0]], [tl[1], tr[1]], color='r')
-                    plt.plot([tr[0], br[0]], [tr[1], br[1]], color='r')
-                    plt.plot([br[0], bl[0]], [br[1], bl[1]], color='r')
-                    plt.plot([bl[0], tl[0]], [bl[1], tl[1]], color='r')
-
-        if rnd is not None:
-            plt.plot(rnd[0], rnd[1], "^k")
-
-        plt.plot(self.start.state[0], self.start.state[1], "xr")
-        plt.plot(self.end.state[0], self.end.state[1], "xr")
-        plt.axis("equal")
-        plt.axis([-20, 20, -20, 20])
-        plt.grid(True)
-        plt.pause(0.01)
-
-
+    
 # class Node():
 #     """
 #     RRT Node
@@ -1014,7 +602,7 @@ def main():
     parser = argparse.ArgumentParser(description='CS 593-ROB - Assignment 1')
     parser.add_argument('-g', '--geom', default='point', choices=['point', 'circle', 'rectangle'],
                         help='the geometry of the robot. Choose from "point" (Question 1), "circle" (Question 2), or "rectangle" (Question 3). default: "point"')
-    parser.add_argument('--alg', default='rrt', choices=['rrt', 'rrtstar'],
+    parser.add_argument('--alg', default='rrtstar', choices=['rrt', 'rrtstar'],
                         help='which path-finding algorithm to use. default: "rrt"')
     parser.add_argument('--iter', default=100, type=int,
                         help='number of iterations to run')
@@ -1023,16 +611,17 @@ def main():
     parser.add_argument('--fast', action='store_true',
                         help='set to disable live animation. (the final results will still be shown in a graph). Useful for doing timing analysis')
     parser.add_argument('--env-id', default=1, type=int)
-    parser.add_argument('--env-type', default='2d', type=str)
+    parser.add_argument('--env-type', default='3d', type=str)
     parser.add_argument('--nn', action='store_true')
     parser.add_argument('--sample', default='directed',
                         type=str, choices=['directed', 'normal'])
     parser.add_argument('--get-results', action='store_true')
     parser.add_argument('--show-animation', action='store_true',
-                        help='set to show edges in the graph')
+                        help='set to show edges in the graph', default=True)
     
 
     args = parser.parse_args()
+    print(args)
 
     show_animation = not args.blind and not args.fast
 
@@ -1052,15 +641,14 @@ def main():
 
     start = np.random.uniform(-20, 20, 2)
     start = [-18, 10]
-    start = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *
-                                                                         math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+      
     goal = np.random.uniform(-20, 20, 2)
     goal = [15, 19]
     goal = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *
                                                                         math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
 
     dof = 3
-
+    
     
     dof = 3
     # TODO uncomment following necessary lines for 3D gui window (doesm't work in ssh)
@@ -1099,6 +687,28 @@ def main():
                                         attachments=[], self_collisions=True,
                                         disabled_collisions=set())
 
+
+
+
+    start = (-0.813358794499552, -0.37120422397572495, -0.754454729356351)
+    start_position = (0.3998897969722748, -0.3993956744670868, 0.6173484325408936)
+    goal = (0.7527214782907734, -0.6521867735052328, -0.4949270744967443)
+    goal_position = (0.35317009687423706, 0.35294029116630554, 0.7246701717376709)
+
+
+    # start = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+    # goal = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+
+
+
+
+
+    set_joint_positions(ur5, UR5_JOINT_INDICES, start)
+    goal_marker = draw_sphere_marker(position=goal_position, radius=0.02, color=[1, 0, 0, 1])
+    goal_marker = draw_sphere_marker(position=start_position, radius=0.02, color=[1, 0, 1, 1])
+
+
+
     rrt = RRT(start=start, goal=goal, randArea=[-20, 20], pointcloud=pc, obstacleList=obstacleList,
               dof=dof, alg=args.alg, geom=args.geom, maxIter=args.iter, sample=args.sample, env=args.env_type, ur5=ur5, collisionCheck3d=collisionCheck3d)
 
@@ -1124,7 +734,7 @@ def main():
 
     starttime = time.time()
     path, firsttime, minTime = rrt.planning3d(
-        animation=show_animation, model=model)
+        show_animation=args.show_animation, model=model)
     endtime = time.time()
     starttime2 = time.time()
 
@@ -1143,10 +753,13 @@ def main():
     # print('Sample Type: ', 'normal' if args.sample == 'directed' else 'directed')
     # print("Time taken: ", endtime2 - starttime2)
 
-    if not args.blind:
+    if not args.blind and path is not None:
 
-        rrt.draw_graph()
-        plt.show()
+        while True:
+            for q in path:
+                set_joint_positions(ur5, UR5_JOINT_INDICES, q)
+                time.sleep(0.5)
+
 
 
 if __name__ == '__main__':
