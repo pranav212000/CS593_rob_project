@@ -332,27 +332,15 @@ class RRT():
 
                 while True:
 
-                    if self.env == '2d':
-                        sample = []
+                    
+                    rnd = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *
+                                                                                        math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
 
-                        for j in range(0, self.dof):
-                            sample.append(random.uniform(
-                                self.minrand, self.maxrand))
+                    set_joint_positions(self.ur5, UR5_JOINT_INDICES, rnd)
+                    rnd = Node(conf=rnd, ur5=self.ur5)
 
-                        rnd = Node(sample)
-
-                        if self.__CollisionCheck(rnd):
-                            break
-
-                    elif self.env == '3d':
-                        rnd = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *
-                                                                                           math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
-
-                        set_joint_positions(self.ur5, UR5_JOINT_INDICES, rnd)
-                        rnd = Node(conf=rnd, ur5=self.ur5)
-
-                        if not self.collisionCheck3d(rnd.conf):
-                            break
+                    if not self.collisionCheck3d(rnd.conf):
+                        break
 
                         
 
@@ -361,7 +349,7 @@ class RRT():
 
                 
                 
-                near_nodes = self.getNearNodes(rnd)
+                near_nodes = self.find_near_nodes(rnd)
                 for node in near_nodes:
                     near_cost = self.cost_to_go[tuple(
                         self.nodeList[node].conf)]
@@ -711,6 +699,9 @@ def main():
 
     rrt = RRT(start=start, goal=goal, randArea=[-20, 20], pointcloud=pc, obstacleList=obstacleList,
               dof=dof, alg=args.alg, geom=args.geom, maxIter=args.iter, sample=args.sample, env=args.env_type, ur5=ur5, collisionCheck3d=collisionCheck3d)
+    
+    rrt2 = RRT(start=start, goal=goal, randArea=[-20, 20], pointcloud=pc, obstacleList=obstacleList,
+              dof=dof, alg=args.alg, geom=args.geom, maxIter=args.iter, sample= 'normal' if args.sample != 'normal' else 'directed', env=args.env_type, ur5=ur5, collisionCheck3d=collisionCheck3d)
 
     total_input_size = 2806
     output_size = 1
@@ -729,14 +720,17 @@ def main():
 
     # model.load('entire_model_env_2d_epoch_15000_pc.pt')
     model = torch.load(
-        'entire_model_env_3d_epoch_2850.pt', map_location='cpu')
+        'entire_model_env_3d_epoch_6350.pt', map_location='cpu')
     model.eval()
 
     starttime = time.time()
     path, firsttime, minTime = rrt.planning3d(
         show_animation=args.show_animation, model=model)
     endtime = time.time()
+    set_joint_positions(ur5, UR5_JOINT_INDICES, start)
     starttime2 = time.time()
+    path2, firsttime2, minTime2 = rrt2.planning3d(
+        show_animation=args.show_animation, model=model)
 
     endtime2 = time.time()
 
@@ -749,14 +743,29 @@ def main():
               (rrt.get_path_len(path), endtime - starttime))
         print("First time: ", firsttime - starttime)
         print("Min time: ", minTime - starttime)
+    print('----------------------------------------------------')
+    print('Sample Type: ', 'normal' if args.sample == 'directed' else 'directed')
+    print("Time taken: ", endtime2 - starttime2)
+    if path2 is None:
+        print("FAILED to find a path in %.2fsec" % (endtime2 - starttime2))
+    else:
+        print("SUCCESS - found path of cost %.5f in %.2fsec" %
+              (rrt2.get_path_len(path2), endtime2 - starttime2))
+        print("First time: ", firsttime2 - starttime2)
+        print("Min time: ", minTime2 - starttime2)
 
     # print('Sample Type: ', 'normal' if args.sample == 'directed' else 'directed')
     # print("Time taken: ", endtime2 - starttime2)
 
     if not args.blind and path is not None:
 
-        while True:
+        for _ in range(3):
             for q in path:
+                set_joint_positions(ur5, UR5_JOINT_INDICES, q)
+                time.sleep(0.5)
+
+        for _ in range(3):
+            for q in path2:
                 set_joint_positions(ur5, UR5_JOINT_INDICES, q)
                 time.sleep(0.5)
 
