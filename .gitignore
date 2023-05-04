@@ -11,3 +11,8 @@ models/
 !envs/**/*
 !2d/**/dataset.pkl
 !3d/**/dataset.pkl
+!2d/**/
+#include file 3d/0/graph_3d_env_0_nodes_250.pkl
+
+!3d/**/*2000.pkl
+!2d/**/*2000.pkl
