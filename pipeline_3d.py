@@ -522,7 +522,7 @@ def main():
                          output_size, CAE, MLP, activation_f=activation_f, dropout=0.0)
 
     
-    model_path = 'entire_model_env_3d_epoch_2250.pt'
+    model_path = 'entire_model_env_3d_epoch_1700.pt'
     # model_path = 'models/04_032813/entire_model_env_3d_epoch_2300.pt'
     model = torch.load(
         model_path, map_location='cpu')
