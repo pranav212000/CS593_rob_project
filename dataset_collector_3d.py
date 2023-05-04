@@ -108,7 +108,7 @@ def main():
 
         for i in range(len(path)):
 
-            state = np.array(path[i].state)
+            state = np.array(path[i].conf)
             dataset.append(np.array(
                 [start[0], start[1], start[2], goal[0], goal[1], goal[2], state[0], state[1], state[2], cost_to_goal[i]]))
 

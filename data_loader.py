@@ -66,6 +66,8 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
             dataset = dataset[:, 3:]
 
    
+    
+    # if env_type == '2d':
     dataset = dataset / 20.0
     targets = targets / 20.0
 

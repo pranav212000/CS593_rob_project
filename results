@@ -4,10 +4,10 @@
 #SBATCH --nodes=1
 #SBATCH --partition=gorman-gpu
 #SBATCH --gres=gpu:1
-#SBATCH --mem=128G
 #SBATCH --time=3-23:00:00
 #SBATCH --job-name results
 
 
 
-python pipeline_2d.py --alg rrtstar --get-results
+python planning_2d.py --sample normal --get-results
+# python pipeline_3d.py --alg rrtstar --sample directed --env-id 6 --iter 100 --get-results

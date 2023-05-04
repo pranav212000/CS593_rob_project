@@ -28,6 +28,8 @@ import os
 from prm_3d import Node, set_joint_positions, draw_sphere_marker, draw_line_marker, remove_marker, magnitude, UR5_JOINT_INDICES
 from collision_utils import *
 os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
+import warnings
+warnings.filterwarnings("ignore")
 
 
 def diff(v1, v2):
@@ -133,9 +135,8 @@ class RRT():
         return np.linalg.norm(np.array(node1.conf) - np.array(node2.conf))
   
 
-    
+
     def steerTo3d(self, rand_node, nearest_node, step_size=0.05, show_animation=True):
-        
         
         distance = self.getDistance(rand_node, nearest_node)
         n_steps = round(distance/step_size)
@@ -182,19 +183,17 @@ class RRT():
         min_time = time.time()
         firstTime = time.time()
 
-        if self.env == '3d':
-            print(self.start)
-            print(self.end)
-            if self.collisionCheck3d(self.start.conf) or self.collisionCheck3d(self.end.conf):
-                return [], firstTime, min_time
+        
+        if self.collisionCheck3d(self.start.conf) or self.collisionCheck3d(self.end.conf):
+            return [], firstTime, min_time
 
         self.nodeList = [self.start]
         point_cloud = self.pointcloud
         min_cost = float('inf')
 
         for i in range(self.maxIter):
-            if i% 50 == 0:
-                print(i)
+            # if i% 50 == 0:
+            #     print(i)
 
             rnd = self.generatesample(point_cloud=point_cloud, model=model)
             nind = self.GetNearestListIndex(self.nodeList, rnd)
@@ -346,6 +345,7 @@ class RRT():
                     if near_cost < min_near_neighbor_cost:
                         min_near_neighbor_cost = near_cost
 
+
                 node_input = np.append(env_data, rnd.conf)
 
                 node_input = node_input.flatten()
@@ -431,7 +431,7 @@ class RRT():
         Returns: a list of indices of nearby nodes.
         """
         # Use this value of gamma
-        GAMMA = 0.5
+        GAMMA = 5
         # your code here
 
         n_nodes = len(self.nodeList)
@@ -562,17 +562,6 @@ class RRT():
         else:
             return None
 
-    
-# class Node():
-#     """
-#     RRT Node
-#     """
-
-#     def __init__(self, state):
-#         self.state = state
-#         self.cost = 0.0
-#         self.parent = None
-#         self.children = set()
 
 
 def main():
@@ -601,33 +590,32 @@ def main():
 
     show_animation = not args.blind and not args.fast
 
+    test_iterations = 1000 if args.get_results else 1
     print("Starting planning algorithm '%s' with '%s' robot geometry" %
-          (args.alg, args.geom))
-    starttime = time.time()
+            (args.alg, args.geom))
 
-    env_path = 'envs/{}/env{}.pkl'.format(args.env_type, args.env_id)
 
-    obstacleList = []
-    env = pickle.load(open(env_path, 'rb'))
-    obstacleList = env
 
-    env_pc_path = 'envs/{}/env{}_pc.pkl'.format(args.env_type, args.env_id)
+    total_input_size = 2806
+    output_size = 1
 
-    pc = pickle.load(open(env_pc_path, 'rb'))
+    activation_f = torch.nn.ReLU
 
-    start = np.random.uniform(-20, 20, 2)
-    start = [-18, 10]
-      
-    goal = np.random.uniform(-20, 20, 2)
-    goal = [15, 19]
-    goal = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *
-                                                                        math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+    model = MLPComplete(total_input_size, output_size,
+                        activation_f=activation_f, dropout=0)
+    CAE = CAE_2d
+    MLP = mlp.MLP
+    total_input_size = 2806
+    AE_input_size = 2800
+    mlp_input_size = 28+6
+    model = End2EndMPNet(total_input_size, AE_input_size, mlp_input_size,
+                        output_size, CAE, MLP, activation_f=activation_f, dropout=0.0)
 
-    dof = 3
-    
-    
-    dof = 3
-    # TODO uncomment following necessary lines for 3D gui window (doesm't work in ssh)
+    # model.load('entire_model_env_2d_epoch_15000_pc.pt')
+    model = torch.load(
+        'models/03_224313/entire_model_env_3d_epoch_1050.pt', map_location='cpu')
+    model.eval()
+
     if args.show_animation:
         physicsClient = p.connect(p.GUI)
         p.setAdditionalSearchPath(pybullet_data.getDataPath())
@@ -644,102 +632,167 @@ def main():
         p.setPhysicsEngineParameter(enableFileCaching=0)
         p.setGravity(0, 0, -9.8)
 
-    # load obstacles from pkl file
-    with open('envs/3d/env{}.pkl'.format(args.env_id), 'rb') as f:
-        env = pickle.load(f)
 
-    plane = p.loadURDF("plane.urdf")
-    ur5 = p.loadURDF('assets/ur5/ur5.urdf',
-                        basePosition=[0, 0, 0.02], useFixedBase=True)
+    d_count = 0
+    d_time = 0
+    n_count = 0
+    n_time = 0
+    d_path_length = 0
+    n_path_length = 0
+    d_cost = 0
+    n_cost = 0
 
-    obstacles = [plane]
+    for test in tqdm(range(1, test_iterations + 1)):
 
-    for i in range(len(env)):
-        obstacles.append(p.loadURDF('assets/block.urdf',
-                                    basePosition=env[i],
-                                    useFixedBase=True))
+        
+        starttime = time.time()
+        
+        if args.get_results:
+            env_id = np.random.randint(9)
+        else:
+            env_id = args.env_id
 
-    collisionCheck3d = get_collision_fn(ur5, UR5_JOINT_INDICES, obstacles=obstacles,
-                                        attachments=[], self_collisions=True,
-                                        disabled_collisions=set())
+        env_path = 'envs/3d/env{}.pkl'.format(env_id)
+
+        obstacleList = []
+        env = pickle.load(open(env_path, 'rb'))
+        obstacleList = env
+
+        env_pc_path = 'envs/3d/env{}_pc.pkl'.format(env_id)
+
+        pc = pickle.load(open(env_pc_path, 'rb'))
+
+        
+        dof = 3
+
+        
+        
+        with open('envs/3d/env{}.pkl'.format(env_id), 'rb') as f:
+            env = pickle.load(f)
+
+        plane = p.loadURDF("plane.urdf")
+        ur5 = p.loadURDF('assets/ur5/ur5.urdf',
+                            basePosition=[0, 0, 0.02], useFixedBase=True)
+
+        obstacles = [plane]
+
+        for i in range(len(env)):
+            obstacles.append(p.loadURDF('assets/block.urdf',
+                                        basePosition=env[i],
+                                        useFixedBase=True))
+
+        collisionCheck3d = get_collision_fn(ur5, UR5_JOINT_INDICES, obstacles=obstacles,
+                                            attachments=[], self_collisions=True,
+                                            disabled_collisions=set())
 
 
-    
-    start = (-0.813358794499552, -0.37120422397572495, -0.754454729356351)
-    start_position = (0.3998897969722748, -0.3993956744670868, 0.6173484325408936)
-    goal = (0.7527214782907734, -0.6521867735052328, -0.4949270744967443)
-    goal_position = (0.35317009687423706, 0.35294029116630554, 0.7246701717376709)
-
-    start = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
-    set_joint_positions(ur5, UR5_JOINT_INDICES, start)
-    while collisionCheck3d(start) :
-        print("start collision")
         start = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
         set_joint_positions(ur5, UR5_JOINT_INDICES, start)
+        while collisionCheck3d(start) :
+            # print("start collision")
+            start = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+            set_joint_positions(ur5, UR5_JOINT_INDICES, start)
 
-    goal = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
-    set_joint_positions(ur5, UR5_JOINT_INDICES, goal)
-    while collisionCheck3d(goal) :
-        print("goal collision")
         goal = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
         set_joint_positions(ur5, UR5_JOINT_INDICES, goal)
+        while collisionCheck3d(goal) :
+            # print("goal collision")
+            goal = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+            set_joint_positions(ur5, UR5_JOINT_INDICES, goal)
 
-    goal_position = getEndEffectorPos(ur5)
+        goal_position = getEndEffectorPos(ur5)
 
-    set_joint_positions(ur5, UR5_JOINT_INDICES, start)
-    start_position = getEndEffectorPos(ur5)
+        set_joint_positions(ur5, UR5_JOINT_INDICES, start)
+        start_position = getEndEffectorPos(ur5)
+        
+
+        
+        goal_marker = draw_sphere_marker(position=goal_position, radius=0.02, color=[1, 0, 0, 1])
+        goal_marker = draw_sphere_marker(position=start_position, radius=0.02, color=[1, 0, 1, 1])
+
+
+
+        rrt = RRT(start=start, goal=goal, randArea=[-20, 20], pointcloud=pc, obstacleList=obstacleList,
+                dof=dof, alg=args.alg, geom=args.geom, maxIter=args.iter, sample=args.sample, env=args.env_type, ur5=ur5, collisionCheck3d=collisionCheck3d)
+        
+        rrt2 = RRT(start=start, goal=goal, randArea=[-20, 20], pointcloud=pc, obstacleList=obstacleList,
+                dof=dof, alg=args.alg, geom=args.geom, maxIter=args.iter, sample= 'normal' if args.sample == 'directed' else 'normal', env=args.env_type, ur5=ur5, collisionCheck3d=collisionCheck3d)
+
+        
+        starttime = time.time()
+        path, firsttime, minTime = rrt.planning3d(
+            show_animation=args.show_animation, model=model)
+        endtime = time.time()
+        set_joint_positions(ur5, UR5_JOINT_INDICES, start)
+        starttime2 = time.time()
+        path2, firsttime2, minTime2 = rrt2.planning3d(
+            show_animation=args.show_animation, model=model)
+
+        endtime2 = time.time()
+
+
+
+        if path is not None:
+            d_count += 1
+            d_time += endtime - starttime
+            
+            d_path_length += len(path)
+            d_cost += rrt.get_path_len(path)
+        if path2 is not None:
+            n_count += 1
+            n_time += endtime2 - starttime2
+            
+            n_path_length += len(path2)
+            n_cost += rrt2.get_path_len(path2)
+
+        if test % 20 == 0 and d_count != 0 and n_count != 0 and args.get_results:
+            print('----------------------------------------------------')
+            print('Sample Type: ', args.sample)
+            
+            print('Final Results')
+            print('Success Rate: ', d_count / test)
+            print('Average time: ', d_time / d_count)
+            print('Average path length: ', d_path_length / d_count)
+            print('Average cost: ', d_cost / d_count)
+
+            print('Sample Type: ', 'normal' if args.sample == 'directed' else 'directed')
+
+            print('Success Rate: ', n_count / test)
+            print('Average time: ', n_time / n_count)
+            print('Average path length: ', n_path_length / n_count)
+            print('Average cost: ', n_cost / n_count, flush=True)
+
+    if args.get_results:
+        print('----------------------------------------------------')
+        print('Sample Type: ', args.sample)
+            
+        print('Success Rate: ', n_count / test_iterations)
+        print('Average time: ', d_time / d_count)
+        print('Average path length: ', d_path_length / d_count)
+        print('Average cost: ', d_cost / d_count)
+
+        print('Sample Type: ', 'normal' if args.sample == 'directed' else 'directed')
+
+        print('Success Rate: ', n_count / test_iterations)
+        print('Average time: ', n_time / n_count)
+        print('Average path length: ', n_path_length / n_count)
+        print('Average cost: ', n_cost / n_count)
+
     
 
+
+
+
+
+
     
-    goal_marker = draw_sphere_marker(position=goal_position, radius=0.02, color=[1, 0, 0, 1])
-    goal_marker = draw_sphere_marker(position=start_position, radius=0.02, color=[1, 0, 1, 1])
-
-
-
-    rrt = RRT(start=start, goal=goal, randArea=[-20, 20], pointcloud=pc, obstacleList=obstacleList,
-              dof=dof, alg=args.alg, geom=args.geom, maxIter=args.iter, sample=args.sample, env=args.env_type, ur5=ur5, collisionCheck3d=collisionCheck3d)
-    
-    rrt2 = RRT(start=start, goal=goal, randArea=[-20, 20], pointcloud=pc, obstacleList=obstacleList,
-              dof=dof, alg=args.alg, geom=args.geom, maxIter=args.iter, sample= 'normal' if args.sample != 'normal' else 'directed', env=args.env_type, ur5=ur5, collisionCheck3d=collisionCheck3d)
-
-    total_input_size = 2806
-    output_size = 1
-
-    activation_f = torch.nn.ReLU
-
-    model = MLPComplete(total_input_size, output_size,
-                        activation_f=activation_f, dropout=0)
-    CAE = CAE_2d
-    MLP = mlp.MLP
-    total_input_size = 2806
-    AE_input_size = 2800
-    mlp_input_size = 28+6
-    model = End2EndMPNet(total_input_size, AE_input_size, mlp_input_size,
-                         output_size, CAE, MLP, activation_f=activation_f, dropout=0.0)
-
-    # model.load('entire_model_env_2d_epoch_15000_pc.pt')
-    model = torch.load(
-        'entire_model_env_3d_epoch_6350.pt', map_location='cpu')
-    model.eval()
-
-    starttime = time.time()
-    path, firsttime, minTime = rrt.planning3d(
-        show_animation=args.show_animation, model=model)
-    endtime = time.time()
-    set_joint_positions(ur5, UR5_JOINT_INDICES, start)
-    starttime2 = time.time()
-    path2, firsttime2, minTime2 = rrt2.planning3d(
-        show_animation=args.show_animation, model=model)
-
-    endtime2 = time.time()
-
     print('Sample Type: ', args.sample)
     print("Time taken: ", endtime - starttime)
     if path is None:
         print("FAILED to find a path in %.2fsec" % (endtime - starttime))
     else:
         print("SUCCESS - found path of cost %.5f in %.2fsec" %
-              (rrt.get_path_len(path), endtime - starttime))
+            (rrt.get_path_len(path), endtime - starttime))
         print("First time: ", firsttime - starttime)
         print("Min time: ", minTime - starttime)
     print('----------------------------------------------------')
@@ -749,12 +802,10 @@ def main():
         print("FAILED to find a path in %.2fsec" % (endtime2 - starttime2))
     else:
         print("SUCCESS - found path of cost %.5f in %.2fsec" %
-              (rrt2.get_path_len(path2), endtime2 - starttime2))
+            (rrt2.get_path_len(path2), endtime2 - starttime2))
         print("First time: ", firsttime2 - starttime2)
         print("Min time: ", minTime2 - starttime2)
 
-    # print('Sample Type: ', 'normal' if args.sample == 'directed' else 'directed')
-    # print("Time taken: ", endtime2 - starttime2)
 
     if args.show_animation and path is not None:
 
