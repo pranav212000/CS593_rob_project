@@ -349,8 +349,7 @@ class RRT():
         Returns: True if node is within 5 units of the goal state; False otherwise
         """
         d = dist(node.conf, self.end.conf)
-        # TODO - change this to 5
-        if d < 0.5:
+        if d < 5:
             return True
         return False
 
@@ -409,55 +408,7 @@ class RRT():
                 nearinds.append(i)
         return nearinds
 
-    def to_be_added(self, newNode, nearinds, point_cloud, model=None):
-        """
-        Finds cost to goal from all nearinds.
-        Compares minimum cost to goal with cost to goal from newNode
-        if cost to goal from newNode is more, returns False, else true
-        """
-        # load model entire_model_env_2d_epoch_15000_pc.pt
-
-        # print(point_cloud)
-        # print(newNode.state)
-        node_input = point_cloud
-        node_input = np.append(node_input, self.end.conf)
-        node_input = np.append(node_input, newNode.conf)
-
-        node_input = node_input.flatten()
-        data = np.array(node_input).astype(np.float32)
-        # print(data)
-        # normalize data by 20
-        data = data/20.0
-        data = torch.FloatTensor(data)
-        # print(point_cloud)
-
-        # model.load_state_dict(saved_model)
-        cost_to_go = model(data)
-        # print(cost_to_go)
-
-        # for all nearnodes, find the positive minimum cost to go using model
-        # initialize min cost to go from -inf
-        min_cost_to_go = cost_to_go
-        for i in nearinds:
-            node = self.nodeList[i]
-            node_input = point_cloud
-            node_input = np.append(node_input, node.conf)
-            node_input = np.append(node_input, self.end.conf)
-            node_input = node_input.flatten()
-            data = np.array(node_input).astype(np.float32)
-            data = torch.FloatTensor(data)
-            near_cost_to_go = model(data)
-            if near_cost_to_go > 0 and cost_to_go > 0 and near_cost_to_go < cost_to_go:
-                return False
-
-        # print(m_cost_to_go, cost_to_go)
-        # cost_to_go < min_cost_to_go  and both are not negative infinity
-        if cost_to_go >= 0:
-            print(cost_to_go)
-            return True
-        else:
-            return False
-
+    
     def rewire(self, newNode, newNodeIndex, nearinds):
         """
         Should examine all nodes near newNode, and decide whether to "rewire" them to go through newNode.
@@ -611,11 +562,11 @@ def main():
         starttime = time.time()
 
         if args.get_results:
-            env_id = np.random.randint(9)
+            env_id = np.random.randint(0, 10)
         else:
             env_id = args.env_id
 
-        print('env_id: ', env_id)
+        # print('env_id: ', env_id)
 
         env_path = 'envs/3d/env{}.pkl'.format(env_id)
 
