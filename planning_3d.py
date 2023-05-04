@@ -383,8 +383,7 @@ class RRT():
         newNode: the node to be inserted.
 
         Returns: a list of indices of nearby nodes.
-        """
-        # TODO 20250 uses 50
+        """        
         GAMMA = 5
 
         n_nodes = len(self.nodeList)
@@ -474,7 +473,7 @@ def main():
     parser.add_argument('--show-animation', action='store_true',
                         help='set to show edges in the graph', default=False)
     parser.add_argument('--model-path', type=str,
-                        default='entire_model_env_3d_epoch_1700.pt')
+                        default='test_models/entire_model_env_3d_epoch_2850.pt')
 
     args = parser.parse_args()
     print(args)
@@ -483,8 +482,8 @@ def main():
 
 
     # TODO: change model path
-    # model_path = args.model_path
-    model_path = 'entire_model_env_3d_epoch_1700.pt'
+    model_path = args.model_path
+    # model_path = 'entire_model_env_3d_epoch_1700.pt'
     # model_path = 'models/04_032813/entire_model_env_3d_epoch_2300.pt'
     model = torch.load(
         model_path, map_location='cpu')
