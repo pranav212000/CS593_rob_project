@@ -29,7 +29,7 @@ Milestone 2:
 Multiple environments added, only graph nodes corresponding to env 0 added to limit the size.
 
 
-(To find shortest path, we find nearest 5 nodes to start and goal (since the node can be one that is not part of graph), then find shortest paths between these nodes and finally use the shortest of these all)
+(To find shortest path, we find nearest k nodes to start and goal (since the node can be one that is not part of graph), then find shortest paths between these nodes and finally use the shortest of these all)
 
 Data Generation:
 data_gen: Submits the job to slurm to generate data samples for a given environment
@@ -44,8 +44,23 @@ Training:
 
 job_train: Submits the job to slurm to train the complete model, with 
 
-python train_complete_model.py --N 10 --epochs 10000  --learning-rate 0.01 --decay-step 25 --decay-rate 0.8 --batch-size 1024 --samples 200000
+
+python train.py --N 10 --epochs 10000  --learning-rate 0.01 --batch-size 4096 --samples 50000 --activation relu --dropout 0 --point-cloud --weight-decay 0.001 --env-type 2d
 
 
-Results obtained by using parameters:
-Namespace(N=10, batch_size=1024, decay_rate=0.8, decay_step=25, device=0, env_type='2d', epochs=10000, learning_rate=0.01, model_path='./models/', opt='Adagrad', samples=200000, start_epoch=0, with_start=False, world_size=20.0)
+RRTStar:
+
+python planning_2d.py --sample normal --env [ENV_ID] 
+
+--blind flag to disable the animation
+--model-path: Path to a model
+--iter: Iterations to run the planning
+--sample: Which sampling to generate first: 'directed' = guided, 'normal' = Traditional RRT* with rewire.
+
+
+python planning_3d.py --sample normal --iter 100 --show-animation 
+
+--model-path : Path to the model
+
+if show animation is enabled, the nodes are displayed and finally the path for the sample mentioned in argument is displayed 3 times followed by other sample case.
+
