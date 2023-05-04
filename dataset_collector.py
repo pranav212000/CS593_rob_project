@@ -9,18 +9,18 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env-id', type=int, default=0)
     parser.add_argument('--env', type=str, default='2d')
-    parser.add_argument('--num-nodes', type=int, default=2500)
+    parser.add_argument('--num-nodes', type=int, default=2000)
     parser.add_argument('--num-iter', type=int, default=5000)
     parser.add_argument('--save-every', type=int, default=500)
     args = parser.parse_args()
 
-    
+    # Load the environment
     with open('envs/{}/env{}.pkl'.format(args.env, args.env_id), 'rb') as f:
         env0 = pickle.load(f)
 
     prm = PRM(obstacleList=env0, randArea=[-20, 20])
 
-    
+    # Get the generated graph using PRM*
     with open('{}/{}/graph_env_{}_nodes_{}.pkl'.format(args.env, args.env_id, args.env_id, args.num_nodes), 'rb') as f:
         nodes = pickle.load(f)
 
@@ -28,7 +28,7 @@ def main():
 
     dataset = []
     for iter in tqdm(range(args.num_iter)):
-
+        # Sample collision free start and goal
         start = [np.random.uniform(-20, 20), np.random.uniform(-20, 20)]
         while not prm.collisionCheck(Node(state=start)):
             start = [np.random.uniform(-20, 20), np.random.uniform(-20, 20)]
@@ -44,11 +44,6 @@ def main():
 
         if path is None:
             continue
-        # print(cost)
-        # print('cost', cost)
-
-        # print('start', start)
-        # print('goal', goal)
         
 
         data = np.array([])
@@ -56,26 +51,15 @@ def main():
         goal = np.array(goal)
         
 
-        # print(len(path))
-        # print(len(cost_to_goal))
-        
         for i in range(len(path)):
-            # print('path', path[i].state, 'cost', cost_to_goal[i])
             state = np.array(path[i].state)
             dataset.append(np.array([start[0], start[1], goal[0], goal[1],state[0], state[1], cost_to_goal[i]]))
                 
-
-        
-
         if iter % args.save_every == 0:
-            
             with open('2d/{}/dataset.pkl'.format(args.env_id), 'wb') as f:
                 pickle.dump(dataset, f)
             
         
-
-
-
 
 if __name__ == '__main__':
     main()

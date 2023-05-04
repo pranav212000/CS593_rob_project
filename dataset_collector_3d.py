@@ -35,7 +35,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--env-id', type=int, default=0)
     parser.add_argument('--env', type=str, default='3d')
-    parser.add_argument('--num-nodes', type=int, default=2500)
+    parser.add_argument('--num-nodes', type=int, default=2000)
     parser.add_argument('--num-iter', type=int, default=5000)
     parser.add_argument('--save-every', type=int, default=500)
     args = parser.parse_args()
@@ -58,6 +58,7 @@ def main():
 
     obstacles = [plane]
 
+    # Load Obstacles
     for i in range(len(env)):
         obstacles.append(p.loadURDF('assets/block.urdf',
                                     basePosition=env[i],
@@ -70,7 +71,7 @@ def main():
     prm = PRM(obstacleList=obstacles, randArea=[-20, 20], dof=dof, env='3d', env_id=args.env_id,
               collisionCheck3d=collisionCheck3d, ur5=ur5, UR5_JOINT_INDICES=UR5_JOINT_INDICES)
 
-    
+    # Load the generated graph using PRM*
     with open('{}/{}/graph_{}_env_{}_nodes_{}.pkl'.format(args.env, args.env_id, args.env, args.env_id, args.num_nodes), 'rb') as f:
         nodes = pickle.load(f)
 
@@ -78,12 +79,12 @@ def main():
 
     dataset = []
     for iter in tqdm(range(args.num_iter)):
-
+        # Sample collision free start and goal
         start = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *
                           math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
         set_joint_positions(ur5, UR5_JOINT_INDICES, start)
         while (prm.collisionCheck(Node(conf=start, ur5=ur5))):
-            # print(start)
+            
             start = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *
                             math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
 
@@ -113,7 +114,6 @@ def main():
                 [start[0], start[1], start[2], goal[0], goal[1], goal[2], state[0], state[1], state[2], cost_to_goal[i]]))
 
         if iter % args.save_every == 0:
-            # print('iter', iter)
             
             with open('3d/{}/dataset.pkl'.format(args.env_id), 'wb') as f:
                 pickle.dump(dataset, f)

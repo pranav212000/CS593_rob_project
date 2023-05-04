@@ -9,6 +9,7 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
     obs = []
 
     if point_cloud:
+        # Load point clouds
         for i in range(0,N):
 
             temp = pickle.load(open('envs/{}/env{}_pc.pkl'.format(env_type, str(i)), 'rb'))
@@ -20,6 +21,7 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
         obs = np.array(obs)
         obs = obs / 20.0
     else:
+        # Load obstacle points (x,y,sizex,sizey) for 2d and (x,y,z) for 3D
         for i in range(0,N):
 
             temp = pickle.load(open('envs/{}/env{}_pc.pkl'.format(env_type, str(i)), 'rb'))
@@ -29,6 +31,7 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
             obs.append(temp)
 
         obs = np.array(obs)
+        # Scale the obstacles
         obs = obs / 20.0
 
 
@@ -59,6 +62,7 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
     targets = np.expand_dims(targets, axis=1)
     dataset = np.array(dataset)
 
+    # Drop the start position from the dataset
     if not with_start:
         if env_type == '2d':
             dataset = dataset[:, 2:]
@@ -67,7 +71,7 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
 
    
     
-    # if env_type == '2d':
+    # Scale the dataset and targets
     dataset = dataset / 20.0
     targets = targets / 20.0
 
@@ -78,7 +82,7 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
     if get_together:
         dataset = np.concatenate((obs[env_indices], dataset), axis=1)
 
-   
+    # Shuffle the dataset
     zipped = list(zip(dataset, targets, env_indices))
     np.random.shuffle(zipped)
     dataset, targets, env_indices = zip(*zipped)
@@ -92,57 +96,3 @@ def data_loader_2d(N=10, with_start = False, samples = 100000, get_together = Fa
 
     
     return obs, dataset[:samples], targets[:samples], env_indices[:samples]
-
-
-
-
-# def load_train_dataset(N=10):
-#     obs = []
-#     for i in range(0,N):
-    
-#         temp = pickle.load(open('envs/2d/env'+str(i)+'_pc.pkl', 'rb'))
-    
-#         obs.append(temp)
-#     obs = np.array(obs)
-
-    
-#     costs = []
-#     for i in range(0,N):
-      
-#         env = pickle.load(open('2d/'+str(i)+'/dataset.pkl', 'rb'))
-#         costs.append(env)
-
-#     costs = np.array(costs)
-    
-#     data = []
-#     for i in tqdm(range(0,N)):
-#         temp = []
-#         for obstacle in obs[i]:
-#             temp.append(obstacle[0])
-#             temp.append(obstacle[1])
-        
-#         for cost in costs[i]:
-#             temp2 = []
-#             temp2.extend(temp)
-#             temp2.append(cost[2])
-#             temp2.append(cost[3])
-#             temp2.append(cost[4])
-#             temp2.append(cost[5])
-#             temp2.append(cost[6])
-        
-#             # print(cost)
-#             # break
-#             data.append(temp2)
-
-#     print("Data loaded successfully")
-#     return data
-        
-        
-# def load_batch(data, batch_size):
-#     np.random.shuffle(data)
-#     n_batches = len(data)//batch_size
-#     batches = np.array_split(data, n_batches)
-#     return batches
-
-# # data = load_train_dataset(10)
-# # batch = load_batch(data, 32)
