@@ -620,6 +620,7 @@ def main():
     n_path_length = 0
     d_cost = 0
     n_cost = 0
+    both = 0
 
     test_iterations = 300 if args.get_results else 1
 
@@ -712,14 +713,21 @@ def main():
             d_count += 1
             d_time += endtime - starttime
 
-            d_path_length += len(path)
-            d_cost += rrt.get_path_len(path)
+            
         if path2 is not None:
             n_count += 1
             n_time += endtime2 - starttime2
 
+            
+
+        if path is not None and path2 is not None:
+            both += 1
+            d_path_length += len(path)
+            d_cost += rrt.get_path_len(path)
+
             n_path_length += len(path2)
             n_cost += rrt2.get_path_len(path2)
+
 
         if test % 20 == 0 and d_count != 0 and n_count != 0 and args.get_results:
             print('----------------------------------------------------')
@@ -727,34 +735,34 @@ def main():
 
             print('Final Results')
             print('Success Rate: ', d_count / test)
-            print('Average time: ', d_time / d_count)
-            print('Average path length: ', d_path_length / d_count)
-            print('Average cost: ', d_cost / d_count)
+            print('Average time: ', d_time / test)
+            print('Average path length: ', d_path_length / both)
+            print('Average cost: ', d_cost / both)
 
             print('Sample Type: ', 'normal' if args.sample ==
                   'directed' else 'directed')
 
             print('Success Rate: ', n_count / test)
-            print('Average time: ', n_time / n_count)
-            print('Average path length: ', n_path_length / n_count)
-            print('Average cost: ', n_cost / n_count, flush=True)
+            print('Average time: ', n_time / test)
+            print('Average path length: ', n_path_length / both)
+            print('Average cost: ', n_cost / both, flush=True)
 
     if args.get_results:
         print('----------------------------------------------------')
         print('Sample Type: ', args.sample)
 
         print('Success Rate: ', n_count / test_iterations)
-        print('Average time: ', d_time / d_count)
-        print('Average path length: ', d_path_length / d_count)
-        print('Average cost: ', d_cost / d_count)
+        print('Average time: ', d_time / test_iterations)
+        print('Average path length: ', d_path_length / both)
+        print('Average cost: ', d_cost / both)
 
         print('Sample Type: ', 'normal' if args.sample ==
               'directed' else 'directed')
 
         print('Success Rate: ', n_count / test_iterations)
-        print('Average time: ', n_time / n_count)
-        print('Average path length: ', n_path_length / n_count)
-        print('Average cost: ', n_cost / n_count)
+        print('Average time: ', n_time / test_iterations)
+        print('Average path length: ', n_path_length / both)
+        print('Average cost: ', n_cost / both)
 
     print('Sample Type: ', args.sample)
     print("Time taken: ", endtime - starttime)

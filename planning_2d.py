@@ -562,9 +562,12 @@ def main():
     n_time = 0
     d_path_length = 0
     n_path_length = 0
+    d_cost = 0
+    n_cost = 0
+    both = 0
 
     if args.get_results:
-        num_iter = 1000
+        num_iter = 300
     
 
     if args.get_results:
@@ -607,28 +610,42 @@ def main():
 
             if path is not None:
                 d_count += 1
-                d_time += minTime2 - starttime2
-                d_path_length += len(path)
-            if path2 is not None and len(path)!= 0:
+                d_time += minTime - starttime
+                
+            if path2 is not None:
                 n_count += 1
-                n_time += minTime - starttime
+                n_time += minTime2 - starttime2
+
+            if path is not None and path2 is not None:
+                both += 1
+                d_path_length += len(path)
+                d_cost += rrt.get_path_len(path)
+                
                 n_path_length += len(path2)
+                n_cost += rrt2.get_path_len(path2)
+
+            
 
             if it % 20 == 0 and it != 0:
                 print('directed success rate: ', d_count/it, flush=True)
-                print('directed average time: ', d_time/d_count, flush=True)
-                print('directed average path length: ', d_path_length/d_count, flush=True)
+                print('directed average time: ', d_time/it, flush=True)
+                print('directed average path length: ', d_path_length/both, flush=True)
+                print('directed average cost: ', d_cost/both, flush=True)
                 print('normal success rate: ', n_count/it, flush=True)
-                print('normal average time: ', n_time/n_count, flush=True)
-                print('normal average path length: ', n_path_length/n_count, flush=True)
+                print('normal average time: ', n_time/it, flush=True)
+                print('normal average path length: ', n_path_length/both, flush=True)
+                print('normal average cost: ', n_cost/both, flush=True)
+
                     
                     
         print('directed success rate: ', d_count/num_iter)
-        print('directed average time: ', d_time/d_count)
-        print('directed average path length: ', d_path_length/d_count)
+        print('directed average time: ', d_time/num_iter)
+        print('directed average path length: ', d_path_length/both)
+        print('directed average cost: ', d_cost/both)
         print('normal success rate: ', n_count/num_iter)
-        print('normal average time: ', n_time/n_count)
-        print('normal average path length: ', n_path_length/n_count)
+        print('normal average time: ', n_time/num_iter)
+        print('normal average path length: ', n_path_length/both)
+        print('normal average cost: ', n_cost/both)
 
     else:
         # Initializing 2 rrtstar planners- one for normal RRT*, one for guided (cost-to-go) RRT*

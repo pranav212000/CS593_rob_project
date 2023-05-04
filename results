@@ -3,7 +3,6 @@
 
 #SBATCH --nodes=1
 #SBATCH --partition=gorman-gpu
-#SBATCH --mem=128G
 #SBATCH --gres=gpu:1
 #SBATCH --time=3-23:00:00
 #SBATCH --job-name results
