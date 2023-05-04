@@ -564,7 +564,7 @@ def main():
     n_path_length = 0
 
     if args.get_results:
-        num_iter = 100
+        num_iter = 1000
     
 
     if args.get_results:
