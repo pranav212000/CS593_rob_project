@@ -897,7 +897,7 @@ def main():
             d_path_length = 0
             n_path_length = 0
             for it in tqdm(range(1, 10000)):
-                env_id = random.randint(0, 9)
+                env_id = random.randint(0, 10)
                 env_path = 'envs/2d/env{}.pkl'.format(env_id)
 
                 obstacleList = []
@@ -942,20 +942,24 @@ def main():
                     n_path_length += len(path2)
 
                 if it % 20 == 0 and it != 0:
-                    print('directed success rate: ', d_count/it, flush=True)
-                    print('directed average time: ', d_time/d_count, flush=True)
-                    print('directed average path length: ', d_path_length/d_count, flush=True)
-                    print('normal success rate: ', n_count/it, flush=True)
-                    print('normal average time: ', n_time/n_count, flush=True)
-                    print('normal average path length: ', n_path_length/n_count, flush=True)
+                    print('Sample: ', args.sample)
+                    print('success rate: ', d_count/it, flush=True)
+                    print('average time: ', d_time/d_count, flush=True)
+                    print('average path length: ', d_path_length/d_count, flush=True)
+                    print('Sample: ', 'normal' if args.sample == 'directed' else 'directed')
+                    print('success rate: ', n_count/it, flush=True)
+                    print('average time: ', n_time/n_count, flush=True)
+                    print('average path length: ', n_path_length/n_count, flush=True)
                     
                     
-            print('directed success rate: ', d_count/100)
-            print('directed average time: ', d_time/d_count)
-            print('directed average path length: ', d_path_length/d_count)
-            print('normal success rate: ', n_count/100)
-            print('normal average time: ', n_time/n_count)
-            print('normal average path length: ', n_path_length/n_count)
+            print('Sample: ', args.sample)
+            print('success rate: ', d_count/100)
+            print('average time: ', d_time/d_count)
+            print('average path length: ', d_path_length/d_count)
+            print('Sample: ', 'normal' if args.sample == 'directed' else 'directed')
+            print('success rate: ', n_count/100)
+            print('average time: ', n_time/n_count)
+            print('average path length: ', n_path_length/n_count)
 
 
 

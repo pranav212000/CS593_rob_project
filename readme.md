@@ -13,6 +13,8 @@ resource library is needed for linux to increase the recursion depth. This is no
 
 job and job_3d are the job files that can be submitted using slurm
 
+prm_3d.py --env 2d --show-animation --save-every 50
+
 prm_3d.py includes both environments 2d as well as 3d and can be switched using argument --env. Help available using -h
 
 --show-animation can be used to plot edges, computationally expensive
