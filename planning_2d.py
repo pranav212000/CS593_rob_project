@@ -603,10 +603,7 @@ def main():
             path2, firsttime2, minTime2 = rrt2.planning(animation=False, model=model)
             endtime2 = time.time()
 
-            if path is not None:
-                if len(path) == 0:
-                    it -= 1
-                    continue
+           
 
             if path is not None:
                 d_count += 1

@@ -9,9 +9,9 @@
 #SBATCH --job-name rob_train
 
 
-# python train.py --N 10 --epochs 10000  --learning-rate 0.01 --batch-size 2048 --samples 200000 --activation relu --dropout 0 --point-cloud --weight-decay 0.001 --env-type 2d
+python train.py --N 10 --epochs 10000  --learning-rate 0.01 --batch-size 4096 --samples 200000 --activation relu --dropout 0 --point-cloud --weight-decay 0.001 --env-type 2d
 
-python train.py --N 10 --epochs 10000  --learning-rate 0.01 --batch-size 4096 --samples 100000 --activation relu --dropout 0.0 --point-cloud --weight-decay 0.001 --env-type 3d
+# python train.py --N 10 --epochs 5000  --learning-rate 0.01 --batch-size 4096 --samples 100000 --activation relu --dropout 0.0 --point-cloud --weight-decay 0.001 --env-type 3d
 
 
 # python train_complete_model.py --N 10 --epochs 15000  --learning-rate 0.1 --batch-size 2048 --samples 50000 --activation relu --dropout 0 --point-cloud

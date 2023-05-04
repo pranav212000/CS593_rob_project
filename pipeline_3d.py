@@ -1,7 +1,7 @@
 """
 Path Planning Sample Code with RRT*
 
-author: Ahmed Qureshi, code adapted from AtsushiSakai(@Atsushi_twi)
+Code adapted from assignments.
 
 """
 
@@ -54,6 +54,9 @@ def dist(p1, p2):
 
 
 def get_pointcloud(obstaclelist):
+    """
+    Given a list of obstacles, returns a point cloud of the obstacles
+    """
     point_cloud = []
     num_points = 200
     for point in obstaclelist:
@@ -61,19 +64,22 @@ def get_pointcloud(obstaclelist):
         left_bottom_y = point[1]
         size_x = point[2]
         size_y = point[3]
-        # print(left_bottom_x, left_bottom_y, size_x, size_y)
-        # uniformly sample 100 points in the environment
+        
+        # uniformly sampled points in the environment
         for i in range(num_points):
             x = np.random.uniform(left_bottom_x, left_bottom_x + size_x)
             y = np.random.uniform(left_bottom_y, left_bottom_y + size_y)
             point_cloud.append([x, y])
-    # convert to numpy array
-    # print(point_cloud)
+    
     point_cloud = np.array(point_cloud)
     return point_cloud
 
 
+
 def getEndEffectorPos(ur5):
+    """
+    Returns the end effector position of the UR5
+    """
     num_joints = p.getNumJoints(ur5)
     link_id = num_joints - 1
     link_state = p.getLinkState(
@@ -93,19 +99,13 @@ class RRT():
         """
         Sets algorithm parameters
 
-        start:Start Position [x,y]
-        goal:Goal Position [x,y]
-        obstacleList:obstacle Positions [[x,y,width,height],...]
-        randArea:Ramdom Samping Area [min,max]
-
+        start:Start Configuration [x,y,z]
+        goal:Goal Position [x,y,z]
+        obstacleList:obstacle Positions [[x,y,z],...]
         """
 
-        if env == '2d':
-            self.start = Node(start)
-            self.end = Node(goal)
-        else:
-            self.start = Node(conf=start, ur5=ur5)
-            self.end = Node(conf=goal, ur5=ur5)
+        self.start = Node(conf=start, ur5=ur5)
+        self.end = Node(conf=goal, ur5=ur5)
         self.obstacleList = obstacleList
         self.minrand = randArea[0]
         self.maxrand = randArea[1]
@@ -131,9 +131,15 @@ class RRT():
         self.solutionSet = set()
 
     def getDistance(self, node1: Node, node2: Node):
+        """
+        Returns the distance between two nodes
+        """
         return np.linalg.norm(np.array(node1.conf) - np.array(node2.conf))
 
     def steerTo3d(self, rand_node, nearest_node, step_size=0.05, show_animation=True):
+        """
+        Steer to function for 3d environment
+        """
 
         distance = self.getDistance(rand_node, nearest_node)
         n_steps = round(distance/step_size)
@@ -145,7 +151,6 @@ class RRT():
         link_pos = []
         start_pos = getEndEffectorPos(self.ur5)
         for i in range(n_steps):
-            # print(i)
             start = start + unit_step
             start = (start[0], start[1], start[2])
             link_pos.append(getEndEffectorPos(self.ur5))
@@ -162,8 +167,6 @@ class RRT():
             link_pos.insert(0, start_pos)
             link_pos.append(end_pos)
 
-            # print(len(link_pos))
-
             for i in range(len(link_pos)-1):
                 p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
 
@@ -171,9 +174,7 @@ class RRT():
 
     def planning3d(self, show_animation=False, model=None):
         """
-        Implements the RTT (or RTT*) algorithm, following the pseudocode in the handout.
-        You should read and understand this function, but you don't have to change any of its code - just implement the 3 helper functions.
-
+        Implements the RTT* algorithm.
         animation: flag for animation on or off
         """
 
@@ -188,14 +189,10 @@ class RRT():
         min_cost = float('inf')
 
         for i in range(self.maxIter):
-            # if i% 50 == 0:
-            #     print(i)
-
+            
             rnd = self.generatesample(point_cloud=point_cloud, model=model)
             nind = self.GetNearestListIndex(self.nodeList, rnd)
 
-            # print(rnd.conf)
-            # print(self.nodeList[nind].conf)
             rnd_valid, rnd_cost = self.steerTo3d(
                 rnd, self.nodeList[nind], show_animation=show_animation)
 
@@ -204,34 +201,22 @@ class RRT():
                 newNode.parent = nind
                 newNode.cost = rnd_cost + self.nodeList[nind].cost
 
-                if self.alg == 'rrtstar':
-                    # you'll implement this method
-                    nearinds = self.find_near_nodes(newNode)
-                    # to_add = self.to_be_added(newNode, nearinds, point_cloud)
-                    # you'll implement this method
-                    newParent = self.choose_parent(newNode, nearinds)
-                    # if to_add == True:
-                    #     newParent = self.choose_parent(newNode, nearinds) # you'll implement this method
-                    # else:
-                    #     continue
-                else:
-                    newParent = None
 
-                # insert newNode into the tree
+                nearinds = self.find_near_nodes(newNode)
+                newParent = self.choose_parent(newNode, nearinds)
+
                 if newParent is not None:
                     newNode.parent = newParent
                     newNode.cost = self.getDistance(
                         newNode, self.nodeList[newParent]) + self.nodeList[newParent].cost
-                    # newNode.cost = dist(
-                    #     newNode.state, self.nodeList[newParent].conf) + self.nodeList[newParent].cost
+                    
                 else:
                     pass  # nind is already set as newNode's parent
                 self.nodeList.append(newNode)
                 newNodeIndex = len(self.nodeList) - 1
                 self.nodeList[newNode.parent].children.add(newNodeIndex)
 
-                if self.alg == 'rrtstar' and self.sample == 'normal':
-                    # you'll implement this method
+                if self.sample == 'normal':
                     self.rewire(newNode, newNodeIndex, nearinds)
 
                 if self.is_near_goal(newNode):
@@ -242,9 +227,6 @@ class RRT():
                     if cost < min_cost:
                         min_time = time.time()
 
-                # if animation:
-
-                #     self.draw_graph(rnd.state)
 
         return self.get_path_to_goal(), firstTime, min_time
 
@@ -257,7 +239,7 @@ class RRT():
 
         Returns: index of the new parent selected
         """
-        # your code here
+        
         # find paths for all nodes in neainds and calculate the distance from source
         # find the minimum distance and return the index of the node
         # if no path is found return None
@@ -277,28 +259,24 @@ class RRT():
     def generatesample(self, model=None, point_cloud=None):
         """
         Randomly generates a sample, to be used as a new node.
-        This sample may be invalid - if so, call generatesample() again.
-
-        You will need to modify this function for question 3 (if self.geom == 'rectangle')
+        if sample == 'normal' then it samples a random point
+        if sample == 'directed' then samples based on the cost-to-go from the model.
+        if the cost to go is more than the neighbor's cost to go then sample again. 
 
         returns: random c-space vector
         """
 
         if random.randint(0, 100) > self.goalSampleRate:
             cost_to_go = float('inf')
-            # env_data = point_cloud
-            # env_data = np.append(env_data, self.end.state)
+            
             env_data = self.end.conf
             point_cloud = np.array(point_cloud).astype(np.float32)
             point_cloud = point_cloud.flatten()
             point_cloud = point_cloud / 20.0
 
-            # make pointcloud a row
+            
             point_cloud = point_cloud.reshape(1, -1)
-
-            # print(point_cloud.shape)
             point_cloud = torch.FloatTensor(point_cloud)
-            # print(point_cloud.shape)
 
             prob_to_rand = np.random.random()
 
@@ -306,7 +284,6 @@ class RRT():
 
             min_near_neighbor_cost = 10000
             i = 0
-            # while cost_to_go > self.min_cost_to_go + 10 or self.sample == 'normal':
 
             while cost_to_go > min_near_neighbor_cost + 5 or self.sample == 'normal':
                 i += 1
@@ -324,14 +301,15 @@ class RRT():
                     if not self.collisionCheck3d(rnd.conf):
                         break
 
+                # if sample == 'normal' just sample one point
                 if self.sample == 'normal':
                     break
 
+                # get near nodes and compare the cost to go with current rand node
                 near_nodes = self.find_near_nodes(rnd)
                 for node in near_nodes:
                     near_cost = self.cost_to_go[tuple(
                         self.nodeList[node].conf)]
-                    # model(torch.FloatTensor(np.append(env_data, self.nodeList[node].state).reshape(1, -1)/20.0), point_cloud) * 20.0
                     if near_cost < min_near_neighbor_cost:
                         min_near_neighbor_cost = near_cost
 
@@ -340,8 +318,7 @@ class RRT():
                 node_input = node_input.flatten()
                 data = np.array(node_input).astype(np.float32)
 
-                # print(data.shape)
-
+                # Scaling the data
                 data = data/20.0
                 data = data.reshape(1, -1)
                 data = torch.FloatTensor(data)
@@ -350,7 +327,8 @@ class RRT():
 
                 self.cost_to_go[tuple(rnd.conf)] = cost_to_go
 
-                if prob_to_rand < 0 or len(near_nodes) == 0:
+                # No near nodes, return the rand node
+                if len(near_nodes) == 0:
                     break
 
             self.min_cost_to_go = cost_to_go
@@ -358,9 +336,9 @@ class RRT():
         else:
             rnd = self.end
 
-        # print(rnd)
+        
         draw_sphere_marker(position=rnd.state,
-                           radius=0.005, color=[1, 1, 0, 1])
+                            radius=0.005, color=[1, 1, 0, 1])
 
         return rnd
 
@@ -371,7 +349,8 @@ class RRT():
         Returns: True if node is within 5 units of the goal state; False otherwise
         """
         d = dist(node.conf, self.end.conf)
-        if d < 5.0:
+        # TODO - change this to 5
+        if d < 0.5:
             return True
         return False
 
@@ -591,9 +570,12 @@ def main():
     model = End2EndMPNet(total_input_size, AE_input_size, mlp_input_size,
                          output_size, CAE, MLP, activation_f=activation_f, dropout=0.0)
 
-    # model.load('entire_model_env_2d_epoch_15000_pc.pt')
+    
+    model_path = 'entire_model_env_3d_epoch_2250.pt'
+    # model_path = 'models/04_032813/entire_model_env_3d_epoch_2300.pt'
     model = torch.load(
-        'entire_model_env_3d_epoch_2250.pt', map_location='cpu')
+        model_path, map_location='cpu')
+    print('Using model: ', model_path)
     model.eval()
 
     if args.show_animation:
@@ -632,6 +614,8 @@ def main():
             env_id = np.random.randint(9)
         else:
             env_id = args.env_id
+
+        print('env_id: ', env_id)
 
         env_path = 'envs/3d/env{}.pkl'.format(env_id)
 
