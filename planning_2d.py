@@ -609,22 +609,26 @@ def main():
 
             if path is not None:
                 d_count += 1
-                d_time += minTime - starttime
-                d_first_time += firsttime - starttime
+                # d_time += minTime - starttime
+                # d_first_time += firsttime - starttime
                 
             if path2 is not None:
                 n_count += 1
-                n_time += minTime2 - starttime2
-                n_first_time += firsttime2 - starttime2
+                # n_time += minTime2 - starttime2
+                # n_first_time += firsttime2 - starttime2
 
 
             if path is not None and path2 is not None:
                 both += 1
+                d_time += minTime - starttime
+                d_first_time += firsttime - starttime
                 d_path_length += len(path)
                 d_cost += rrt.get_path_len(path)
                 
                 n_path_length += len(path2)
                 n_cost += rrt2.get_path_len(path2)
+                n_time += minTime2 - starttime2
+                n_first_time += firsttime2 - starttime2
 
             
 
