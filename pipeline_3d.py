@@ -70,6 +70,17 @@ def get_pointcloud(obstaclelist):
     point_cloud = np.array(point_cloud)
     return point_cloud
 
+def getEndEffectorPos(ur5):
+    num_joints = p.getNumJoints(ur5)
+    link_id = num_joints - 1
+    link_state = p.getLinkState(
+        ur5, link_id, computeForwardKinematics=True)
+    link_pos = link_state[0]
+    link_ori = link_state[1]
+
+    return link_pos
+
+
 
 class RRT():
     """
@@ -122,29 +133,7 @@ class RRT():
         return np.linalg.norm(np.array(node1.conf) - np.array(node2.conf))
   
 
-    def getNearNodes(self, newNode: Node, radius: float, k: int):
-
-        nearNodes = []
-        GAMMA = 50
-        n_nodes = len(self.nodeList)
-        radius = GAMMA * (pow((np.log(n_nodes)/n_nodes), (1/self.dof)))
-
-        for i, node in enumerate(self.nodeList):
-            if self.getDistance(newNode, node) < radius:
-                nearNodes.append(i)
-
-        return nearNodes
-    def getEndEffectorPos(self):
-        num_joints = p.getNumJoints(self.ur5)
-        link_id = num_joints - 1
-        link_state = p.getLinkState(
-            self.ur5, link_id, computeForwardKinematics=True)
-        link_pos = link_state[0]
-        link_ori = link_state[1]
-
-        return link_pos
-
-
+    
     def steerTo3d(self, rand_node, nearest_node, step_size=0.05, show_animation=True):
         
         
@@ -156,17 +145,17 @@ class RRT():
                      np.array(nearest_node.conf)) / n_steps
         start = np.array(nearest_node.conf)
         link_pos = []
-        start_pos = self.getEndEffectorPos()
+        start_pos = getEndEffectorPos(self.ur5)
         for i in range(n_steps):
             # print(i)
             start = start + unit_step
             start = (start[0], start[1], start[2])
-            link_pos.append(self.getEndEffectorPos())
+            link_pos.append(getEndEffectorPos(self.ur5))
 
             if self.collisionCheck3d(start):
                 return (False, None)
 
-        end_pos = self.getEndEffectorPos()
+        end_pos = getEndEffectorPos(self.ur5)
 
         if show_animation:
             if len(link_pos) > 10:
@@ -204,7 +193,7 @@ class RRT():
         min_cost = float('inf')
 
         for i in range(self.maxIter):
-            if i% 10 == 0:
+            if i% 50 == 0:
                 print(i)
 
             rnd = self.generatesample(point_cloud=point_cloud, model=model)
@@ -442,7 +431,7 @@ class RRT():
         Returns: a list of indices of nearby nodes.
         """
         # Use this value of gamma
-        GAMMA = 50
+        GAMMA = 0.5
         # your code here
 
         n_nodes = len(self.nodeList)
@@ -600,12 +589,11 @@ def main():
                         help='set to disable live animation. (the final results will still be shown in a graph). Useful for doing timing analysis')
     parser.add_argument('--env-id', default=1, type=int)
     parser.add_argument('--env-type', default='3d', type=str)
-    parser.add_argument('--nn', action='store_true')
     parser.add_argument('--sample', default='directed',
                         type=str, choices=['directed', 'normal'])
     parser.add_argument('--get-results', action='store_true')
     parser.add_argument('--show-animation', action='store_true',
-                        help='set to show edges in the graph', default=True)
+                        help='set to show edges in the graph', default=False)
     
 
     args = parser.parse_args()
@@ -676,22 +664,33 @@ def main():
                                         disabled_collisions=set())
 
 
-
-
+    
     start = (-0.813358794499552, -0.37120422397572495, -0.754454729356351)
     start_position = (0.3998897969722748, -0.3993956744670868, 0.6173484325408936)
     goal = (0.7527214782907734, -0.6521867735052328, -0.4949270744967443)
     goal_position = (0.35317009687423706, 0.35294029116630554, 0.7246701717376709)
 
+    start = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+    set_joint_positions(ur5, UR5_JOINT_INDICES, start)
+    while collisionCheck3d(start) :
+        print("start collision")
+        start = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+        set_joint_positions(ur5, UR5_JOINT_INDICES, start)
 
-    # start = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
-    # goal = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+    goal = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+    set_joint_positions(ur5, UR5_JOINT_INDICES, goal)
+    while collisionCheck3d(goal) :
+        print("goal collision")
+        goal = (np.random.uniform(-2*math.pi, 2*math.pi), np.random.uniform(-2 *math.pi, 2*math.pi), np.random.uniform(-math.pi, math.pi))
+        set_joint_positions(ur5, UR5_JOINT_INDICES, goal)
 
-
-
-
+    goal_position = getEndEffectorPos(ur5)
 
     set_joint_positions(ur5, UR5_JOINT_INDICES, start)
+    start_position = getEndEffectorPos(ur5)
+    
+
+    
     goal_marker = draw_sphere_marker(position=goal_position, radius=0.02, color=[1, 0, 0, 1])
     goal_marker = draw_sphere_marker(position=start_position, radius=0.02, color=[1, 0, 1, 1])
 
@@ -757,7 +756,7 @@ def main():
     # print('Sample Type: ', 'normal' if args.sample == 'directed' else 'directed')
     # print("Time taken: ", endtime2 - starttime2)
 
-    if not args.blind and path is not None:
+    if args.show_animation and path is not None:
 
         for _ in range(3):
             for q in path:
