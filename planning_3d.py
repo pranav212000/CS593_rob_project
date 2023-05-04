@@ -165,8 +165,8 @@ class RRT():
             link_pos.insert(0, start_pos)
             link_pos.append(end_pos)
 
-            for i in range(len(link_pos)-1):
-                p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
+            # for i in range(len(link_pos)-1):
+            #     p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
 
         return (True, distance)
 
