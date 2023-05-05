@@ -34,6 +34,7 @@ Multiple environments added, only graph nodes corresponding to env 0 added to li
 Data Generation:
 data_gen: Submits the job to slurm to generate data samples for a given environment
 2d: python dataset_collector.py --env 2d --env-id 0 --save-every 250 --num-iter 5000 --num-nodes 2000
+
 3d: python dataset_collector_3d.py --env 3d --env-id 0 --save-every 250 --num-iter 5000 --num-nodes 2000
 
 Point Cloud Generator:
@@ -58,7 +59,7 @@ python planning_2d.py --sample normal --env [ENV_ID]
 --sample: Which sampling to generate first: 'directed' = guided, 'normal' = Traditional RRT* with rewire.
 
 
-python planning_3d.py --sample normal --iter 100 --show-animation 
+python planning_3d.py --sample normal --iter 100 --show-animation --env-id [ENV_ID]
 
 --model-path : Path to the model
 

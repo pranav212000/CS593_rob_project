@@ -101,6 +101,8 @@ class RRT():
         pointcloud: point cloud representation of obstacles
         """
 
+        print(sample)
+
         self.start = Node(conf=start, ur5=ur5)
         self.end = Node(conf=goal, ur5=ur5)
         self.obstacleList = obstacleList
@@ -135,7 +137,7 @@ class RRT():
         else:
             return np.linalg.norm(np.array(node1) - np.array(node2))
 
-    def steerTo3d(self, rand_node, nearest_node, step_size=0.05, show_animation=True):
+    def steerTo3d(self, rand_node, nearest_node, step_size=0.05, show_animation=False):
         """
         Steer to function for 3d environment
         """
@@ -160,13 +162,18 @@ class RRT():
 
         if show_animation:
             if len(link_pos) > 10:
-                link_pos = link_pos[::len(link_pos)//2]
+                link_pos = link_pos[::len(link_pos)//10]
 
             link_pos.insert(0, start_pos)
             link_pos.append(end_pos)
 
-            # for i in range(len(link_pos)-1):
-            #     p.addUserDebugLine(link_pos[i], link_pos[i+1], [1, 0, 0], 1, 0)
+            
+            if self.sample == 'normal':
+                color = [1, 0, 0]
+            else:
+                color = [0, 1, 0]
+            for i in range(len(link_pos)-1):
+                p.addUserDebugLine(link_pos[i], link_pos[i+1], color, 1, 0)
 
         return (True, distance)
 
@@ -192,7 +199,7 @@ class RRT():
             nind = self.GetNearestListIndex(self.nodeList, rnd)
 
             rnd_valid, rnd_cost = self.steerTo3d(
-                rnd, self.nodeList[nind], show_animation=show_animation)
+                rnd, self.nodeList[nind])
 
             if (rnd_valid):
                 newNode = copy.deepcopy(rnd)
@@ -211,6 +218,10 @@ class RRT():
                     pass  
                 self.nodeList.append(newNode)
                 newNodeIndex = len(self.nodeList) - 1
+
+                if show_animation:
+                    self.steerTo3d(newNode, self.nodeList[newNode.parent], show_animation=show_animation)
+
                 self.nodeList[newNode.parent].children.add(newNodeIndex)
 
                 if self.sample == 'normal':
@@ -343,7 +354,7 @@ class RRT():
         Returns: True if node is within 5 units of the goal state; False otherwise
         """
         d = self.getDistance(node.conf, self.end.conf)
-        if d < 5:
+        if d < 0.5:
             return True
         return False
 
@@ -588,12 +599,16 @@ def main():
                   dof=dof, alg='rrtstar',maxIter=args.iter, sample=args.sample, env='3d', ur5=ur5, collisionCheck3d=collisionCheck3d)
 
         rrt2 = RRT(start=start, goal=goal, randArea=[-20, 20], pointcloud=pc, obstacleList=obstacleList,
-                   dof=dof, alg='rrtstar', maxIter=args.iter, sample='normal' if args.sample == 'directed' else 'normal', env='3d', ur5=ur5, collisionCheck3d=collisionCheck3d)
+                   dof=dof, alg='rrtstar', maxIter=args.iter, sample='normal' if args.sample == 'directed' else 'directed', env='3d', ur5=ur5, collisionCheck3d=collisionCheck3d)
 
         starttime = time.time()
         path, firsttime, minTime = rrt.planning3d(
             show_animation=args.show_animation, model=model)
         endtime = time.time()
+
+        
+                
+        
         set_joint_positions(ur5, UR5_JOINT_INDICES, start)
         starttime2 = time.time()
         path2, firsttime2, minTime2 = rrt2.planning3d(
