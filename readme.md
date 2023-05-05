@@ -41,24 +41,24 @@ prm_3d.py includes both environments 2d as well as 3d and can be switched using 
 
 (To find shortest path, we find nearest k nodes to start and goal (since the node can be one that is not part of graph), then find shortest paths between these nodes and finally use the shortest of these all)
 
-Data Generation:
+6. Data Generation:
 data_gen: Submits the job to slurm to generate data samples for a given environment
 
-2d:
+6.1. 2d:
 ``` 
 python dataset_collector.py --env 2d --env-id 0 --save-every 250 --num-iter 5000 --num-nodes 2000
 ```
-3d: 
+6.2. 3d: 
 ```
 python dataset_collector_3d.py --env 3d --env-id 0 --save-every 250 --num-iter 5000 --num-nodes 2000
 ```
 
-Point Cloud Generator:
+6.3. Point Cloud Generator:
 ```
 python pointcloud.py [env_type] [env_folder_path] [num_env] [num_points]
 ```
 
-Training: 
+7. Training: 
 
 job_train: Submits the job to slurm to train the complete model, with 
 
@@ -66,7 +66,7 @@ job_train: Submits the job to slurm to train the complete model, with
 python train.py --N 10 --epochs 10000  --learning-rate 0.01 --batch-size 4096 --samples 50000 --activation relu --dropout 0 --point-cloud --weight-decay 0.001 --env-type 2d
 ```
 
-RRTStar:
+8. RRTStar:
 
 ```
 python planning_2d.py --sample normal --env [ENV_ID] 
@@ -76,6 +76,7 @@ python planning_2d.py --sample normal --env [ENV_ID]
 --model-path: Path to a model
 --iter: Iterations to run the planning
 --sample: Which sampling to generate first: 'directed' = guided, 'normal' = Traditional RRT* with rewire.
+
 
 ```
 python planning_3d.py --sample normal --iter 100 --show-animation --env-id [ENV_ID]
