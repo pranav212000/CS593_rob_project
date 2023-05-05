@@ -96,9 +96,6 @@ tensorboard-plugin-wit==1.8.1
 tensorboardX==2.6
 termcolor==2.2.0
 tomli==2.0.1
-torch==1.10.2
-torch-tb-profiler==0.4.1
-torchvision==0.11.3
 tornado==6.2
 tqdm==4.64.1
 traitlets==5.9.0
