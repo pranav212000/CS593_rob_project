@@ -1,13 +1,22 @@
-Requirements:
-Available in requirements.txt.
-
+1. Create Environment:
+```
 conda create -n myenv python=3.8
+```
 
+2. Activate environment:
+```
 conda activate myenv
+```
 
+3. Install Pytorch:
+```
 conda install pytorch==1.12.1 torchvision==0.13.1 torchaudio==0.12.1 cudatoolkit=10.2 -c pytorch
+```
 
+4. Install Requirements:
+```
 pip install -r requirements.txt
+```
 
 Skip to last section to run RRT* for 2D and 3D environments.
 
@@ -18,9 +27,10 @@ resource library is needed for linux to increase the recursion depth. This is no
 
 job and job_3d are the job files that can be submitted using slurm
 
-Generate PRMs for given environments:
-
+5. Generate PRMs for given environments:
+```
 prm_3d.py --env 2d --show-animation --save-every 50
+```
 
 prm_3d.py includes both environments 2d as well as 3d and can be switched using argument --env. Help available using -h
 

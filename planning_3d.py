@@ -160,20 +160,20 @@ class RRT():
 
         end_pos = getEndEffectorPos(self.ur5)
 
-        if show_animation:
-            if len(link_pos) > 10:
-                link_pos = link_pos[::len(link_pos)//10]
+        # if show_animation:
+        #     if len(link_pos) > 10:
+        #         link_pos = link_pos[::len(link_pos)//10]
 
-            link_pos.insert(0, start_pos)
-            link_pos.append(end_pos)
+        #     link_pos.insert(0, start_pos)
+        #     link_pos.append(end_pos)
 
             
-            if self.sample == 'normal':
-                color = [1, 0, 0]
-            else:
-                color = [0, 1, 0]
-            for i in range(len(link_pos)-1):
-                p.addUserDebugLine(link_pos[i], link_pos[i+1], color, 1, 0)
+        #     if self.sample == 'normal':
+        #         color = [1, 0, 0]
+        #     else:
+        #         color = [0, 1, 0]
+        #     for i in range(len(link_pos)-1):
+        #         p.addUserDebugLine(link_pos[i], link_pos[i+1], color, 1, 0)
 
         return (True, distance)
 
